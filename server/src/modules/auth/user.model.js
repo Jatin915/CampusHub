@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    authProvider: {
+      type: String,
+      enum: ["LOCAL", "GOOGLE"],
+      default: "LOCAL",
+    },
+
     role: {
       type: String,
       enum: Object.values(ROLES),
@@ -31,7 +37,7 @@ const userSchema = new mongoose.Schema(
 
     college: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "College"
+      ref: "College",
     },
 
     avatar: {
@@ -70,14 +76,12 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   if (!this.isModified("password")) {
-    return next();
+    return;
   }
 
   this.password = await bcrypt.hash(this.password, 10);
-
-  next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
