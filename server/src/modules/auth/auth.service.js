@@ -8,22 +8,28 @@ import ApiError from "../../utils/ApiError.js";
 
 import generateOTP from "./utils/generateOTP.js";
 import sendEmail from "../../services/email/sendEmail.js";
-import verificationCodeTemplate from "../../services/email/templates/verificationCode.js";
+import verificationCodeTemplate from "../../services/templates/verificationCode.js";
 
-const OTP_EXPIRY_MINUTES = 10;
-const OTP_RESEND_COOLDOWN_SECONDS = 60;
+import {
+  OTP_EXPIRY_MINUTES,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from "./auth.constants.js";
 
-const sendVerificationCode = async (email) => {
+// import ApiError from "../../utils/ApiError.js";
+import { generateAccessToken } from "./utils/jwt.js";
+// import User from "./user.model.js";
+
+export const sendVerificationCode = async (email) => {
   email = email.trim().toLowerCase();
 
-  // Check if account already exists
+  // Check if user already exists
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
     throw new ApiError(409, "An account with this email already exists.");
   }
 
-  // Extract email domain
+  // Extract domain
   const domain = email.split("@")[1];
 
   // Verify college
@@ -62,15 +68,16 @@ const sendVerificationCode = async (email) => {
   // Hash OTP
   const hashedOTP = await bcrypt.hash(otp, 10);
 
-  // Expiry
+  // Expiry time
   const expiresAt = new Date(
     Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000
   );
 
-  // Save / Replace OTP
+  // Save OTP
   await OTP.findOneAndUpdate(
     { email },
     {
+      email,
       otp: hashedOTP,
       attempts: 0,
       expiresAt,
@@ -94,6 +101,42 @@ const sendVerificationCode = async (email) => {
   };
 };
 
-export default {
-  sendVerificationCode,
+
+export const login = async (email, password) => {
+  email = email.trim().toLowerCase();
+
+  const user = await User.findOne({ email }).select("+password");
+
+  if (!user) {
+    throw new ApiError(401, "Invalid email or password.");
+  }
+
+  if (!user.isActive) {
+    throw new ApiError(
+      403,
+      "Your account has been deactivated."
+    );
+  }
+
+  if (user.authProvider !== "LOCAL") {
+    throw new ApiError(
+      400,
+      "Please continue with Google."
+    );
+  }
+
+  const isPasswordCorrect = await user.comparePassword(password);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid email or password.");
+  }
+
+  await user.updateLastLogin();
+
+  const accessToken = generateAccessToken(user._id);
+
+  return {
+    accessToken,
+    user: user.toSafeObject(),
+  };
 };

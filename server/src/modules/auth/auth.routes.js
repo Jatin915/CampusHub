@@ -1,12 +1,15 @@
 import { Router } from "express";
 
-import { sendVerificationCode } from "./auth.controller.js";
+import { sendVerificationCodeController } from "./auth.controller.js";
+import { loginController } from "./auth.controller.js";
 
 const router = Router();
 
 router.post(
   "/send-verification-code",
-  sendVerificationCode
+  sendVerificationCodeController
 );
+
+router.post("/login", loginController);
 
 export default router;

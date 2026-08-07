@@ -88,6 +88,22 @@ userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
+userSchema.methods.toSafeObject = function () {
+  const user = this.toObject();
+
+  delete user.password;
+  delete user.__v;
+
+  return user;
+};
+
+userSchema.methods.updateLastLogin = function () {
+  this.lastLogin = new Date();
+  return this.updateOne({
+    lastLogin: this.lastLogin,
+  });
+};
+
 const User = mongoose.model("User", userSchema);
 
 export default User;
