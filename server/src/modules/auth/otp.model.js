@@ -24,23 +24,22 @@ const otpSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+
+    lastSentAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Automatically delete expired OTP documents
-otpSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 0 }
-);
+otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Only one active OTP per email
-otpSchema.index(
-  { email: 1 },
-  { unique: true }
-);
+otpSchema.index({ email: 1 }, { unique: true });
 
 const OTP = mongoose.model("OTP", otpSchema);
 
