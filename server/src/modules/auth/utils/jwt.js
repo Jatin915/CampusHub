@@ -1,9 +1,26 @@
 import jwt from "jsonwebtoken";
 
-export const generateToken = (payload, expiresIn) => {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn,
-  });
+export const generateAccessToken = (userId) => {
+  return jwt.sign(
+    { userId },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_ACCESS_EXPIRES_IN,
+    }
+  );
+};
+
+export const generateVerificationToken = (email) => {
+  return jwt.sign(
+    {
+      email,
+      purpose: "SIGNUP",
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_VERIFICATION_EXPIRES_IN,
+    }
+  );
 };
 
 export const verifyToken = (token) => {

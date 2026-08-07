@@ -46,10 +46,6 @@ const collegeSchema = new mongoose.Schema(
 );
 
 collegeSchema.index({
-  name: 1,
-});
-
-collegeSchema.index({
   domains: 1,
 });
 
