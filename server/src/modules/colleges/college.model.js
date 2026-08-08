@@ -9,6 +9,13 @@ const collegeSchema = new mongoose.Schema(
       trim: true,
     },
 
+    shortName: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
+    },
+
     domains: [
       {
         type: String,
@@ -29,7 +36,7 @@ const collegeSchema = new mongoose.Schema(
       },
     },
 
-    owner: {
+    ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
@@ -42,6 +49,20 @@ const collegeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      versionKey: false,
+      transform: (_, ret) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      versionKey: false,
+      transform: (_, ret) => {
+        delete ret.__v;
+        return ret;
+      },
+    },
   },
 );
 
