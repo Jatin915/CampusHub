@@ -2,6 +2,10 @@ import { Router } from "express";
 
 import authRoutes from "../modules/auth/auth.routes.js";
 
+import collegeRoutes from "../modules/colleges/college.routes.js";
+
+import adminRoutes from "../modules/admins/admin.routes.js";
+
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -11,6 +15,11 @@ router.get("/health", (req, res) => {
   });
 });
 
+
 router.use("/auth", authRoutes);
+
+router.use("/colleges", collegeRoutes);
+
+router.use("/admins", adminRoutes);
 
 export default router;
