@@ -1,27 +1,30 @@
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
-
 const navLinks = [
-  "Home",
-  "Categories",
-  "How It Works",
-  "Featured",
-  "FAQ",
+  {
+    name: "Home",
+    href: "#home",
+  },
+  {
+    name: "About Us",
+    href: "#about",
+  },
+  {
+    name: "Contact",
+    href: "#contact",
+  },
 ];
 
-
 const MobileMenu = () => {
-
-  const [open,setOpen] = useState(false);
-
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="lg:hidden">
-
       {/* Menu Button */}
+
       <button
-        onClick={()=>setOpen(!open)}
+        onClick={() => setOpen(!open)}
         className="
           p-2
           rounded-lg
@@ -29,25 +32,14 @@ const MobileMenu = () => {
           transition
         "
       >
-
-        {
-          open 
-          ? 
-          <X size={24}/>
-          :
-          <Menu size={24}/>
-        }
-
+        {open ? <X size={24} /> : <Menu size={24} />}
       </button>
-
 
       {/* Mobile Dropdown */}
 
-      {
-        open && (
-
-          <div
-            className="
+      {open && (
+        <div
+          className="
               absolute
               top-20
               left-0
@@ -61,34 +53,25 @@ const MobileMenu = () => {
               flex-col
               gap-5
             "
-          >
-
-            {
-              navLinks.map((item)=>(
-                <a
-                  key={item}
-                  href="#"
-                  className="
+        >
+          {navLinks.map((link, index) => (
+            <a
+              key={index}
+              href={link.href}
+              className="
                     text-gray-700
                     font-medium
                     hover:text-blue-600
                   "
-                  onClick={()=>setOpen(false)}
-                >
-                  {item}
-                </a>
-              ))
-            }
-
-
-          </div>
-
-        )
-      }
-
+              onClick={() => setOpen(false)}
+            >
+              {link.name}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
-
 
 export default MobileMenu;

@@ -2,11 +2,8 @@ import Logo from "./Logo";
 import DesktopMenu from "./DesktopMenu";
 import MobileMenu from "./MobileMenu";
 
-
 const Navbar = () => {
-
   return (
-
     <header
       className="
         sticky
@@ -17,7 +14,6 @@ const Navbar = () => {
         border-b
       "
     >
-
       <div
         className="
           max-w-7xl
@@ -31,28 +27,20 @@ const Navbar = () => {
           justify-between
         "
       >
-
         {/* Logo */}
 
-        <Logo/>
-
+        <Logo />
 
         {/* Desktop Menu */}
 
-        <DesktopMenu/>
-
+        <DesktopMenu />
 
         {/* Mobile Menu */}
 
-        <MobileMenu/>
-
-
+        <MobileMenu />
       </div>
-
     </header>
-
   );
 };
-
 
 export default Navbar;

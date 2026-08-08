@@ -8,13 +8,9 @@ const Logo = () => {
 
       {/* Logo Text */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">
-          CampusHub
-        </h1>
+        <h1 className="text-xl font-bold text-gray-900">CampusHub</h1>
 
-        <p className="text-xs text-gray-500">
-          Student Marketplace
-        </p>
+        <p className="text-xs text-gray-500">Student Marketplace</p>
       </div>
     </div>
   );
