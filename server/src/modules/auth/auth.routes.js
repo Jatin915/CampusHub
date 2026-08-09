@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { sendVerificationCodeController } from "./auth.controller.js";
+import { sendVerificationCodeController, verifyVerificationCodeController } from "./auth.controller.js";
 import { loginController } from "./auth.controller.js";
 
 const router = Router();
@@ -11,5 +11,10 @@ router.post(
 );
 
 router.post("/login", loginController);
+
+router.post(
+  "/verify-verification-code",
+  verifyVerificationCodeController
+);
 
 export default router;

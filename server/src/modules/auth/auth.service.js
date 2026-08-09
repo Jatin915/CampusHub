@@ -1,23 +1,18 @@
 import bcrypt from "bcrypt";
-
 import User from "./user.model.js";
 import OTP from "./otp.model.js";
 import College from "../colleges/college.model.js";
-
 import ApiError from "../../utils/ApiError.js";
-
 import generateOTP from "./utils/generateOTP.js";
 import sendEmail from "../../services/email/sendEmail.js";
 import verificationCodeTemplate from "../../services/templates/verificationCode.js";
-
 import {
   OTP_EXPIRY_MINUTES,
   OTP_RESEND_COOLDOWN_SECONDS,
+  MAX_OTP_ATTEMPTS
 } from "./auth.constants.js";
-
-// import ApiError from "../../utils/ApiError.js";
 import { generateAccessToken } from "./utils/jwt.js";
-// import User from "./user.model.js";
+import { generateVerificationToken } from "./utils/jwt.js";
 
 export const sendVerificationCode = async (email) => {
   email = email.trim().toLowerCase();
@@ -84,7 +79,7 @@ export const sendVerificationCode = async (email) => {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }
   );
@@ -138,5 +133,63 @@ export const login = async (email, password) => {
   return {
     accessToken,
     user: user.toSafeObject(),
+  };
+};
+
+//
+export const verifyVerificationCode = async (email, otp) => {
+  email = email.trim().toLowerCase();
+
+  const verificationCode = await OTP.findOne({ email });
+
+  if (!verificationCode) {
+    throw new ApiError(
+      400,
+      "Verification code is invalid or has expired."
+    );
+  }
+
+  if (verificationCode.expiresAt < new Date()) {
+    await OTP.deleteOne({ _id: verificationCode._id });
+
+    throw new ApiError(
+      400,
+      "Verification code has expired. Please request a new code."
+    );
+  }
+
+  if (verificationCode.attempts >= MAX_OTP_ATTEMPTS) {
+    await OTP.deleteOne({ _id: verificationCode._id });
+
+    throw new ApiError(
+      429,
+      "Too many verification attempts. Please request a new code."
+    );
+  }
+
+  const isValid = await bcrypt.compare(
+    otp,
+    verificationCode.otp
+  );
+
+  if (!isValid) {
+    verificationCode.attempts += 1;
+
+    await verificationCode.save();
+
+    throw new ApiError(
+      400,
+      "Invalid verification code."
+    );
+  }
+
+  await OTP.deleteOne({
+    _id: verificationCode._id,
+  });
+
+  const signupToken = generateVerificationToken(email);
+
+  return {
+    signupToken,
   };
 };
