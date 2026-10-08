@@ -11,8 +11,8 @@ import {
   OTP_RESEND_COOLDOWN_SECONDS,
   MAX_OTP_ATTEMPTS
 } from "./auth.constants.js";
-import { generateAccessToken } from "./utils/jwt.js";
-import { generateVerificationToken } from "./utils/jwt.js";
+import { generateAccessToken, generateVerificationToken, verifyToken } from "./utils/jwt.js";
+import { ROLES } from "../../constants/roles.js";
 
 export const sendVerificationCode = async (email) => {
   email = email.trim().toLowerCase();
@@ -191,5 +191,70 @@ export const verifyVerificationCode = async (email, otp) => {
 
   return {
     signupToken,
+  };
+};
+
+
+export const signup = async ({ signupToken, fullName, password }) => {
+  let decoded;
+
+  try {
+    decoded = verifyToken(signupToken);
+  } catch (error) {
+    throw new ApiError(
+      401,
+      "Signup verification has expired. Please verify your email again."
+    );
+  }
+
+  if (decoded.purpose !== "SIGNUP") {
+    throw new ApiError(
+      401,
+      "Invalid signup token."
+    );
+  }
+
+  const email = decoded.email.trim().toLowerCase();
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    throw new ApiError(
+      409,
+      "An account with this email already exists."
+    );
+  }
+
+  const domain = email.split("@")[1];
+
+  const college = await College.findOne({
+    domains: domain,
+    isActive: true,
+  });
+
+  if (!college) {
+    throw new ApiError(
+      400,
+      "Your college is not registered on CampusHub."
+    );
+  }
+
+  const student = new User({
+    fullName: fullName.trim(),
+    email,
+    password,
+    role: ROLES.STUDENT,
+    college: college._id,
+    authProvider: "LOCAL",
+    isVerified: true,
+  });
+
+  await student.save();
+
+  const accessToken = generateAccessToken(student._id);
+
+  return {
+    accessToken,
+    user: student.toSafeObject(),
   };
 };
