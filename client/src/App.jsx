@@ -1,18 +1,17 @@
-import Navbar from "./components/navbar/Navbar";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/auth/LoginPage";
+import SignupPage from "./pages/auth/SignupPage";
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      <Navbar />
-
-      <div className="p-10">
-        <h1 className="text-3xl font-bold">
-          CampusHub Landing Page
-        </h1>
-      </div>
-
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
