@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../../hooks/useAuth";
 import SignupEmailVerification from "./SignupEmailVerification";
 import SignupPasswordFields from "./SignupPasswordFields";
 
@@ -13,6 +15,11 @@ const SignupForm = () => {
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [signupToken, setSignupToken] = useState("");
+
+  const { signup } = useAuth();
+  const navigate = useNavigate();
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
@@ -21,22 +28,18 @@ const SignupForm = () => {
       setFormError("Please enter your full name.");
       return;
     }
-
     if (!emailVerified) {
       setFormError("Please verify your email before creating an account.");
       return;
     }
-
     if (password.length < 8) {
       setFormError("Password must be at least 8 characters.");
       return;
     }
-
     if (!confirmPassword) {
       setFormError("Please confirm your password.");
       return;
     }
-
     if (password !== confirmPassword) {
       setFormError("Passwords do not match.");
       return;
@@ -45,41 +48,38 @@ const SignupForm = () => {
     try {
       setIsSubmitting(true);
 
-      // Backend signup API will be connected here later.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      console.log({
-        fullName,
-        email,
+      await signup({
+        signupToken,
+        fullName: fullName.trim(),
         password,
       });
+
+      navigate("/dashboard/home");
     } catch (error) {
-      setFormError("Something went wrong. Please try again.");
+      setFormError(
+        error.response?.data?.message ||
+          error.message ||
+          "Signup failed. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-8 space-y-5"
-    >
-
+    <form onSubmit={handleSubmit} className="mt-8 space-y-5">
       {/* Email + OTP */}
       <SignupEmailVerification
         email={email}
         setEmail={setEmail}
         emailVerified={emailVerified}
         setEmailVerified={setEmailVerified}
+        setSignupToken={setSignupToken}
       />
 
       {/* Full Name */}
       <div className="space-y-2">
-        <label
-          htmlFor="name"
-          className="text-sm font-medium text-slate-900"
-        >
+        <label htmlFor="name" className="text-sm font-medium text-slate-900">
           Full Name
         </label>
 
