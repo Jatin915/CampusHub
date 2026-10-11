@@ -8,6 +8,8 @@ import adminRoutes from "../modules/admins/admin.routes.js";
 
 import categoryRoutes from "../modules/categories/category.routes.js";
 
+import productRoutes from "../modules/product/product.routes.js";
+
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -25,5 +27,7 @@ router.use("/colleges", collegeRoutes);
 router.use("/admins", adminRoutes);
 
 router.use("/categories", categoryRoutes);
+
+router.use("/products", productRoutes);
 
 export default router;
