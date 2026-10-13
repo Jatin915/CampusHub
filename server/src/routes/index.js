@@ -10,6 +10,8 @@ import categoryRoutes from "../modules/categories/category.routes.js";
 
 import productRoutes from "../modules/product/product.routes.js";
 
+import cartRoutes from "../modules/cart/cart.routes.js";
+
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -29,5 +31,7 @@ router.use("/admins", adminRoutes);
 router.use("/categories", categoryRoutes);
 
 router.use("/products", productRoutes);
+
+router.use("/cart", cartRoutes);
 
 export default router;
