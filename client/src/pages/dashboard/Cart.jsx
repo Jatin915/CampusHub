@@ -9,55 +9,12 @@ import {
   ShieldCheck,
   Box,
   MessageCircle,
-  ShoppingBag,
   Trash2,
   ArrowRight,
   ShoppingCart,
 } from "lucide-react";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
-import { getCart } from "../../services/productService";
-
-// const initialProducts = [
-//   {
-//     id: "1",
-//     name: "MacBook Air M1",
-//     category: "Electronics",
-//     condition: "Like New",
-//     college: "GLA University",
-//     listed: "Listed 2 days ago",
-//     price: 45000,
-//     quantity: 1,
-//     stock: 2,
-//     image:
-//       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80",
-//   },
-//   {
-//     id: "2",
-//     name: "Engineering Mathematics Textbook",
-//     category: "Books",
-//     condition: "Good",
-//     college: "GLA University",
-//     listed: "Listed 4 days ago",
-//     price: 400,
-//     quantity: 1,
-//     stock: 4,
-//     image:
-//       "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80",
-//   },
-//   {
-//     id: "3",
-//     name: "Study Chair",
-//     category: "Furniture",
-//     condition: "Good",
-//     college: "GLA University",
-//     listed: "Listed 6 days ago",
-//     price: 1200,
-//     quantity: 1,
-//     stock: 2,
-//     image:
-//       "https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=400&q=80",
-//   },
-// ];
+import { getCart, updateCartItem, removeCartItem } from "../../services/cartService";
 
 const formatPrice = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -109,33 +66,60 @@ const Cart = () => {
     );
   };
 
-  const updateQuantity = (id, change) => {
+  const updateQuantity = async (id, change) => {
+  const product = products.find((item) => item.id === id);
+
+  if (!product) return;
+
+  const newQuantity = Math.max(
+    1,
+    Math.min(product.stock, product.quantity + change),
+  );
+
+  if (newQuantity === product.quantity) return;
+
+  try {
+    await updateCartItem(id, newQuantity);
+
     setProducts((current) =>
-      current.map((product) =>
-        product.id === id
-          ? {
-              ...product,
-              quantity: Math.max(
-                1,
-                Math.min(product.stock, product.quantity + change),
-              ),
-            }
-          : product,
+      current.map((item) =>
+        item.id === id
+          ? { ...item, quantity: newQuantity }
+          : item,
       ),
     );
+  } catch (error) {
+    console.error("Failed to update cart quantity:", error);
+  }
+};
+
+  const removeProduct = async (id) => {
+    try {
+      await removeCartItem(id);
+
+      setProducts((current) => current.filter((product) => product.id !== id));
+
+      setSelectedIds((current) => current.filter((itemId) => itemId !== id));
+    } catch (error) {
+      console.error("Failed to remove cart item:", error);
+    }
   };
 
-  const removeProduct = (id) => {
-    setProducts((current) => current.filter((product) => product.id !== id));
-    setSelectedIds((current) => current.filter((itemId) => itemId !== id));
-  };
-
-  const removeSelected = () => {
-    setProducts((current) =>
-      current.filter((product) => !selectedIds.includes(product.id)),
+  const removeSelected = async () => {
+  try {
+    await Promise.all(
+      selectedIds.map((id) => removeCartItem(id))
     );
+
+    setProducts((current) =>
+      current.filter((product) => !selectedIds.includes(product.id))
+    );
+
     setSelectedIds([]);
-  };
+  } catch (error) {
+    console.error("Failed to remove selected items:", error);
+  }
+};
 
   useEffect(() => {
     const fetchCart = async () => {
