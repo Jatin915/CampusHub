@@ -5,21 +5,24 @@ import WhyChooseUs from "../components/landingpage/WhyChooseUs";
 import HowItWorks from "../components/landingpage/HowItWorks";
 import CallToAction from "../components/landingpage/CallToAction";
 import Footer from "../components/landingpage/Footer";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
 
 const LandingPage = () => {
   return (
-    <div>
-      <main>
-        <Hero/>
-        <CategoriesSection/>
-        <FeaturedListings/>
-        <WhyChooseUs/>
-        <HowItWorks/>
-        <CallToAction/>
-      </main>
-      <Footer/>
-    </div>
-  )
-}
+    <DashboardLayout>
+      <div>
+        <main>
+          <Hero />
+          <CategoriesSection />
+          <FeaturedListings />
+          <WhyChooseUs />
+          <HowItWorks />
+          <CallToAction />
+        </main>
+        <Footer />
+      </div>
+    </DashboardLayout>
+  );
+};
 
-export default LandingPage
+export default LandingPage;

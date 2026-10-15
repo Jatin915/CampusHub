@@ -45,7 +45,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-[1.7fr_1.15fr_1.05fr_0.8fr] lg:gap-10">
           {/* BRAND */}
           <div className="col-span-2 lg:col-span-1">
-            <a href="#home" className="inline-flex items-center gap-3">
+            <a href="/" className="inline-flex items-center gap-3">
               <GraduationCap
                 size={39}
                 strokeWidth={2.2}
