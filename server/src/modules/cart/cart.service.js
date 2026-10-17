@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 import Cart from "./cart.model.js";
 import Product from "../product/product.model.js";
@@ -7,7 +6,8 @@ import ApiError from "../../utils/ApiError.js";
 
 const CART_POPULATE = {
   path: "items.product",
-  select: "name description price images quantity condition category college seller isActive",
+  select:
+    "name description price images quantity condition category college seller isActive",
   populate: {
     path: "category",
     select: "name slug",
@@ -29,45 +29,42 @@ const validateProductForUser = async (productId, userId) => {
     isActive: true,
   });
 
-  const user = await User.findOne({_id:userId});
+  const user = await User.findOne({ _id: userId });
 
   if (!product) {
     throw new ApiError(404, "Product not found or unavailable.");
   }
 
-  if (
-    !user.college ||
-    product.college.toString() !== user.college.toString()
-  ) {
-    throw new ApiError(
-      403,
-      "You can only add products from your own college."
-    );
+  if (!user.college || product.college.toString() !== user.college.toString()) {
+    throw new ApiError(403, "You can only add products from your own college.");
   }
 
   if (product.quantity < 1) {
     throw new ApiError(400, "This product is out of stock.");
   }
 
-  return {product, user};
+  return { product, user };
 };
 
 export const getCart = async (userId) => {
-  let cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ user: userId });
 
   if (!cart) {
-    cart = await Cart.create({ user: userId, items: [] });
+    return {
+      user: userId,
+      items: [],
+    };
   }
 
   return getPopulatedCart(cart);
 };
 
 export const addToCart = async ({ userId, productId, quantity = 1 }) => {
-  const {product, user} = await validateProductForUser(productId, userId);
+  const { product, user } = await validateProductForUser(productId, userId);
 
   const cart = await Cart.findOne({ user: user._id });
   const existingItem = cart?.items.find(
-    (item) => item.product.toString() === productId
+    (item) => item.product.toString() === productId,
   );
 
   const newQuantity = existingItem
@@ -75,10 +72,7 @@ export const addToCart = async ({ userId, productId, quantity = 1 }) => {
     : quantity;
 
   if (newQuantity > product.quantity) {
-    throw new ApiError(
-      400,
-      `Only ${product.quantity} unit(s) are available.`
-    );
+    throw new ApiError(400, `Only ${product.quantity} unit(s) are available.`);
   }
 
   if (existingItem) {
@@ -109,10 +103,7 @@ export const updateCartItem = async ({ user, productId, quantity }) => {
   const product = await validateProductForUser(productId, user);
 
   if (quantity > product.quantity) {
-    throw new ApiError(
-      400,
-      `Only ${product.quantity} unit(s) are available.`
-    );
+    throw new ApiError(400, `Only ${product.quantity} unit(s) are available.`);
   }
 
   const cart = await Cart.findOne({ user: user._id });
@@ -121,9 +112,7 @@ export const updateCartItem = async ({ user, productId, quantity }) => {
     throw new ApiError(404, "Cart not found.");
   }
 
-  const item = cart.items.find(
-    (item) => item.product.toString() === productId
-  );
+  const item = cart.items.find((item) => item.product.toString() === productId);
 
   if (!item) {
     throw new ApiError(404, "Product not found in your cart.");
@@ -145,7 +134,7 @@ export const removeCartItem = async ({ userId, productId }) => {
   const initialLength = cart.items.length;
 
   cart.items = cart.items.filter(
-    (item) => item.product.toString() !== productId
+    (item) => item.product.toString() !== productId,
   );
 
   if (cart.items.length === initialLength) {

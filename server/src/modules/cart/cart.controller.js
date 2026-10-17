@@ -19,7 +19,7 @@ export const getCart = asyncHandler(async (req, res) => {
 
 export const addToCart = asyncHandler(async (req, res) => {
   const cart = await addToCartService({
-    userId: req.body.userId,
+    userId: req.user._id,
     productId: req.body.productId,
     quantity: req.body.quantity ?? 1,
   });
