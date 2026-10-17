@@ -14,7 +14,12 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
-import { getCart, updateCartItem, removeCartItem } from "../../services/cartService";
+import {
+  getCart,
+  updateCartItem,
+  removeCartItem,
+} from "../../services/cartService";
+import { createOrder } from "../../services/orderServices";
 
 const formatPrice = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -24,25 +29,25 @@ const formatPrice = (amount) =>
   }).format(amount);
 
 const Cart = () => {
-  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
   const [selectedIds, setSelectedIds] = useState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const selectedProducts = products.filter((product) =>
+  const selectedProducts = cart.filter((product) =>
     selectedIds.includes(product.id),
   );
 
   const subtotal = useMemo(
     () =>
-      products.reduce(
+      cart.reduce(
         (total, product) =>
           selectedIds.includes(product.id)
             ? total + product.price * product.quantity
             : total,
         0,
       ),
-    [products, selectedIds],
+    [cart, selectedIds],
   );
 
   const selectedCount = selectedProducts.reduce(
@@ -60,44 +65,40 @@ const Cart = () => {
 
   const toggleAll = () => {
     setSelectedIds((current) =>
-      current.length === products.length
-        ? []
-        : products.map((product) => product.id),
+      current.length === cart.length ? [] : cart.map((product) => product.id),
     );
   };
 
   const updateQuantity = async (id, change) => {
-  const product = products.find((item) => item.id === id);
+    const product = cart.find((item) => item.id === id);
 
-  if (!product) return;
+    if (!product) return;
 
-  const newQuantity = Math.max(
-    1,
-    Math.min(product.stock, product.quantity + change),
-  );
-
-  if (newQuantity === product.quantity) return;
-
-  try {
-    await updateCartItem(id, newQuantity);
-
-    setProducts((current) =>
-      current.map((item) =>
-        item.id === id
-          ? { ...item, quantity: newQuantity }
-          : item,
-      ),
+    const newQuantity = Math.max(
+      1,
+      Math.min(product.stock, product.quantity + change),
     );
-  } catch (error) {
-    console.error("Failed to update cart quantity:", error);
-  }
-};
+
+    if (newQuantity === product.quantity) return;
+
+    try {
+      await updateCartItem(id, newQuantity);
+
+      setCart((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, quantity: newQuantity } : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update cart quantity:", error);
+    }
+  };
 
   const removeProduct = async (id) => {
     try {
       await removeCartItem(id);
 
-      setProducts((current) => current.filter((product) => product.id !== id));
+      setCart((current) => current.filter((product) => product.id !== id));
 
       setSelectedIds((current) => current.filter((itemId) => itemId !== id));
     } catch (error) {
@@ -106,20 +107,42 @@ const Cart = () => {
   };
 
   const removeSelected = async () => {
-  try {
-    await Promise.all(
-      selectedIds.map((id) => removeCartItem(id))
-    );
+    try {
+      await Promise.all(selectedIds.map((id) => removeCartItem(id)));
 
-    setProducts((current) =>
-      current.filter((product) => !selectedIds.includes(product.id))
-    );
+      setCart((current) =>
+        current.filter((product) => !selectedIds.includes(product.id)),
+      );
 
-    setSelectedIds([]);
-  } catch (error) {
-    console.error("Failed to remove selected items:", error);
-  }
-};
+      setSelectedIds([]);
+    } catch (error) {
+      console.error("Failed to remove selected items:", error);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (selectedIds.length === 0) {
+      alert("Please select at least one product.");
+      return;
+    }
+
+    try {
+      const response = await createOrder(selectedIds);
+
+      if (response.success) {
+        setCart((prevCart) =>
+          prevCart.filter((item) => !selectedIds.includes(item.id)),
+        );
+
+        setSelectedIds([]);
+      }
+    } catch (error) {
+      console.error(
+        "Checkout failed:",
+        error.response?.data?.message || error.message,
+      );
+    }
+  };
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -149,7 +172,7 @@ const Cart = () => {
             image: item.product.images?.[0]?.url || "",
           }));
 
-        setProducts(formattedProducts);
+        setCart(formattedProducts);
         setSelectedIds(formattedProducts.map((product) => product.id));
       } catch (err) {
         console.error("Failed to fetch cart:", err);
@@ -176,8 +199,7 @@ const Cart = () => {
               </p>
             </div>
             <p className="text-sm font-medium text-slate-500">
-              {products.length} {products.length === 1 ? "item" : "items"} in
-              your cart
+              {cart.length} {cart.length === 1 ? "item" : "items"} in your cart
             </p>
           </div>
 
@@ -187,7 +209,7 @@ const Cart = () => {
             </p>
           ) : error ? (
             <p className="py-10 text-center text-red-600">{error}</p>
-          ) : products.length === 0 ? (
+          ) : cart.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
                 <ShoppingCart className="h-8 w-8 text-slate-700" />
@@ -207,7 +229,7 @@ const Cart = () => {
           ) : (
             <>
               <div className="space-y-4">
-                {products.map((product) => {
+                {cart.map((product) => {
                   const selected = selectedIds.includes(product.id);
 
                   return (
@@ -314,12 +336,12 @@ const Cart = () => {
                 >
                   <span
                     className={`flex h-4 w-4 items-center justify-center rounded border ${
-                      selectedIds.length === products.length
+                      selectedIds.length === cart.length
                         ? "border-slate-900 bg-slate-900 text-white"
                         : "border-slate-300"
                     }`}
                   >
-                    {selectedIds.length === products.length && (
+                    {selectedIds.length === cart.length && (
                       <Check className="h-3 w-3" />
                     )}
                   </span>
@@ -374,9 +396,7 @@ const Cart = () => {
             <button
               type="button"
               disabled={selectedCount === 0}
-              onClick={() =>
-                window.alert("Checkout integration will be added next.")
-              }
+              onClick={() => handleCheckout()}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Proceed to Checkout
