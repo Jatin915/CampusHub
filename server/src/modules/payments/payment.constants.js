@@ -1,0 +1,9 @@
+export const PAYMENT_STATUS = {
+  CREATED: "CREATED",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  EXPIRED: "EXPIRED",
+  REFUNDED: "REFUNDED",
+};
+
+export const PAYMENT_EXPIRY_MINUTES = 15;
