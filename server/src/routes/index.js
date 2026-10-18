@@ -14,6 +14,8 @@ import cartRoutes from "../modules/cart/cart.routes.js";
 
 import orderRoutes from "../modules/orders/order.routes.js";
 
+import paymentRoutes from "../modules/payments/payment.routes.js";
+
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -37,5 +39,7 @@ router.use("/products", productRoutes);
 router.use("/cart", cartRoutes);
 
 router.use("/orders", orderRoutes);
+
+router.use("/payments", paymentRoutes);
 
 export default router;

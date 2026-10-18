@@ -132,17 +132,6 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ buyer: 1, createdAt: -1 });
 orderSchema.index({ seller: 1, createdAt: -1 });
 
-// Prevent duplicate processing of the same provider order.
-orderSchema.index(
-  { "payment.razorpayOrderId": 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      "payment.razorpayOrderId": { $type: "string" },
-    },
-  },
-);
-
 const Order = mongoose.model("Order", orderSchema);
 
 export default Order;
