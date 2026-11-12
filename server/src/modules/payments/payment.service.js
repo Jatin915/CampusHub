@@ -68,7 +68,7 @@ const releaseReservedStock = async (
           $set: { status: terminalStatus },
         },
         {
-          new: true,
+          returnDocument: "after",
           session,
         },
       );
@@ -285,8 +285,7 @@ export const createCheckoutSession = async (
 
       payment.orders = createdOrders.map((order) => order._id);
       await payment.save({ session });
-
-      // Do NOT clear the cart before payment verification.
+      
     });
   } finally {
     await session.endSession();

@@ -160,3 +160,131 @@ export const createOrdersFromCart = async (userId, selectedProductIds) => {
   }
 };
 
+
+export const getMyOrders = async (userId, query) => {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(
+    20,
+    Math.max(1, Number.parseInt(query.limit, 10) || 10)
+  );
+
+  const skip = (page - 1) * limit;
+
+  const filter = {
+    buyer: userId,
+  };
+
+  // Optional status filter
+  if (query.status) {
+    if (!Object.values(ORDER_STATUS).includes(query.status)) {
+      throw new ApiError(400, "Invalid order status.");
+    }
+
+    filter.status = query.status;
+  }
+
+  const [orders, totalOrders] = await Promise.all([
+    Order.find(filter)
+      .populate("seller", "fullName email")
+      .populate("items.product", "name images condition")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+
+    Order.countDocuments(filter),
+  ]);
+
+  return {
+    orders,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalOrders / limit),
+      totalOrders,
+      limit,
+      hasNextPage: page < Math.ceil(totalOrders / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
+
+export const getOrderDetails = async (orderId, userId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  const order = await Order.findOne({
+    _id: orderId,
+    buyer: userId,
+  })
+    .populate("seller", "fullName email")
+    .populate("college", "name")
+    .lean();
+
+  if (!order) {
+    throw new ApiError(404, "Order not found.");
+  }
+
+  return order;
+};
+
+
+export const confirmOrderReceived = async (orderId, buyerId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  const now = new Date();
+  const autoDeliveryAt = new Date(
+    now.getTime() + 24 * 60 * 60 * 1000
+  );
+
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: orderId,
+      buyer: buyerId,
+      status: ORDER_STATUS.READY_FOR_PICKUP,
+      "payment.status": PAYMENT_STATUS.PAID,
+      "meetup.buyerConfirmedAt": null,
+      "meetup.sellerConfirmedAt": null,
+    },
+    {
+      $set: {
+        status: ORDER_STATUS.AWAITING_CONFIRMATION,
+        "meetup.buyerConfirmedAt": now,
+        "meetup.autoDeliveryAt": autoDeliveryAt,
+      },
+    },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    }
+  );
+
+  if (!order) {
+    const existingOrder = await Order.findOne({
+      _id: orderId,
+      buyer: buyerId,
+    }).select("status payment.status meetup");
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    if (existingOrder.meetup?.buyerConfirmedAt) {
+      throw new ApiError(409, "You have already confirmed receipt.");
+    }
+
+    if (existingOrder.payment.status !== PAYMENT_STATUS.PAID) {
+      throw new ApiError(400, "Order payment is not completed.");
+    }
+
+    throw new ApiError(
+      400,
+      "Order is not ready for pickup."
+    );
+  }
+
+  return order;
+};

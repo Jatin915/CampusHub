@@ -123,6 +123,11 @@ const orderSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
+
+      autoDeliveryAt: {
+        type: Date,
+        default: null,
+      },
     },
   },
   { timestamps: true },
