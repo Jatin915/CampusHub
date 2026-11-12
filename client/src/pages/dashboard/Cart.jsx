@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingCart, ArrowRight } from "lucide-react";
 
@@ -126,6 +126,10 @@ const Cart = () => {
     }
   };
 
+  const paymentHandlerStartedRef = useRef(false);
+  const paymentVerifiedRef = useRef(false);
+  const paymentFailedRef = useRef(false);
+
   const handleCheckout = async () => {
     if (selectedIds.length === 0) {
       setError("Please select at least one product.");
@@ -139,20 +143,22 @@ const Cart = () => {
       return;
     }
 
+    // Reset payment flags for every new checkout.
+    paymentHandlerStartedRef.current = false;
+    paymentVerifiedRef.current = false;
+    paymentFailedRef.current = false;
+
     setCheckoutLoading(true);
     setError("");
 
-    // Preserve the exact selection submitted for checkout.
     const productIdsToOrder = [...selectedIds];
 
     try {
-      // Step 1: Create checkout session on the backend.
-      const checkoutResponse = await createCheckout(
+      // Step 1: Create checkout session.
+      const checkout = await createCheckout(
         productIdsToOrder,
         crypto.randomUUID(),
       );
-
-      const checkout = checkoutResponse.data;
 
       if (
         !checkout?.paymentId ||
@@ -162,7 +168,7 @@ const Cart = () => {
         throw new Error("Invalid checkout response from server.");
       }
 
-      // Step 2: Open Razorpay Checkout.
+      // Step 2: Configure Razorpay.
       const options = {
         key: checkout.keyId,
         amount: checkout.amount,
@@ -171,23 +177,37 @@ const Cart = () => {
         description: "Campus marketplace purchase",
         order_id: checkout.razorpayOrderId,
 
+        // Step 3: Razorpay payment success handler.
         handler: async (razorpayResponse) => {
+          // Set this immediately, before awaiting verification.
+          paymentHandlerStartedRef.current = true;
+
           try {
             setError("");
 
-            // Step 3: Verify payment with the backend.
             const verificationResponse = await verifyPayment({
               paymentId: checkout.paymentId,
               razorpay_order_id: razorpayResponse.razorpay_order_id,
               razorpay_payment_id: razorpayResponse.razorpay_payment_id,
               razorpay_signature: razorpayResponse.razorpay_signature,
             });
+            console.log("Verification response:", verificationResponse);
 
-            if (verificationResponse.success === false) {
+            const paymentStatus =
+              verificationResponse?.data?.status ??
+              verificationResponse?.status;
+
+            if (paymentStatus !== "PAID") {
+              console.log(
+                "Unexpected verification response:",
+                verificationResponse,
+              );
               throw new Error("Payment verification failed.");
             }
 
-            // Step 4: Update UI only after backend verification succeeds.
+            paymentVerifiedRef.current = true;
+
+            // Step 4: Update cart only after successful verification.
             setCart((current) =>
               current.filter(
                 (product) => !productIdsToOrder.includes(product.id),
@@ -197,6 +217,8 @@ const Cart = () => {
             setSelectedIds((current) =>
               current.filter((id) => !productIdsToOrder.includes(id)),
             );
+
+            setError("");
           } catch (error) {
             console.error(
               "Payment verification failed:",
@@ -211,8 +233,23 @@ const Cart = () => {
           }
         },
 
+        // Step 5: Handle modal dismissal.
         modal: {
           ondismiss: () => {
+            // Do not show a cancellation error if payment
+            // verification has already started or completed.
+            if (
+              paymentHandlerStartedRef.current ||
+              paymentVerifiedRef.current ||
+              paymentFailedRef.current
+            ) {
+              return;
+            }
+
+            setError(
+              "Checkout closed. Your payment status may still be pending. Please check My Orders before trying again.",
+            );
+
             setCheckoutLoading(false);
           },
         },
@@ -224,14 +261,17 @@ const Cart = () => {
 
       const razorpay = new window.Razorpay(options);
 
+      // Step 6: Handle actual payment failure.
       razorpay.on("payment.failed", (response) => {
+        paymentFailedRef.current = true;
+
         console.error(
           "Payment failed:",
           response.error?.description || "Unknown payment error",
         );
 
         setError(
-          "Payment failed. Your cart has been kept unchanged. You can try again.",
+          "Payment attempt failed. Your cart is unchanged. You can try again.",
         );
 
         setCheckoutLoading(false);

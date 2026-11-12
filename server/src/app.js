@@ -8,9 +8,15 @@ import { processExpiredPayments } from "./modules/payments/payment.expiry.js";
 
 const app = express();
 
+// Run once immediately when server starts.
+processExpiredPayments().catch((error) => {
+  console.error("Payment expiry worker failed:", error);
+});
+
+// Then run every 60 seconds.
 const paymentExpiryTimer = setInterval(() => {
   processExpiredPayments().catch((error) => {
-    console.error("Payment expiry worker failed:", error.message);
+    console.error("Payment expiry worker failed:", error);
   });
 }, 60_000);
 

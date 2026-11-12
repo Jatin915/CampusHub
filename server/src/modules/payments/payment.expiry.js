@@ -1,8 +1,6 @@
 import Payment from "./payment.model.js";
 import razorpay from "../../config/razorpay.js";
-import {
-  PAYMENT_STATUS,
-} from "./payment.constants.js";
+import { PAYMENT_STATUS } from "./payment.constants.js";
 import { expireCheckout } from "./payment.service.js";
 
 let running = false;
@@ -25,6 +23,12 @@ export const processExpiredPayments = async () => {
         const providerOrder = await razorpay.orders.fetch(
           payment.razorpayOrderId,
         );
+
+        if (!providerOrder || !providerOrder.status) {
+          throw new Error(
+            `Invalid Razorpay order response for ${payment.razorpayOrderId}`,
+          );
+        }
 
         if (providerOrder.status === "paid") {
           // Do not release stock for a paid Razorpay order.
@@ -49,8 +53,7 @@ export const processExpiredPayments = async () => {
 
         const hasPendingPayment = attempts.some(
           (attempt) =>
-            attempt.status === "authorized" ||
-            attempt.status === "created",
+            attempt.status === "authorized" || attempt.status === "created",
         );
 
         if (hasCapturedPayment || hasPendingPayment) {
@@ -62,7 +65,7 @@ export const processExpiredPayments = async () => {
       } catch (error) {
         console.error(
           `Could not process expired payment ${payment._id}:`,
-          error.message,
+          error,
         );
       }
     }
