@@ -11,6 +11,7 @@ export const processExpiredPayments = async () => {
   running = true;
 
   try {
+    
     const expiredPayments = await Payment.find({
       status: PAYMENT_STATUS.CREATED,
       expiresAt: { $lte: new Date() },
@@ -19,33 +20,25 @@ export const processExpiredPayments = async () => {
 
     for (const payment of expiredPayments) {
       try {
-        // Check Razorpay's current order state before releasing stock.
+
         const providerOrder = await razorpay.orders.fetch(
           payment.razorpayOrderId,
         );
 
-        if (!providerOrder || !providerOrder.status) {
-          throw new Error(
-            `Invalid Razorpay order response for ${payment.razorpayOrderId}`,
-          );
-        }
+        if (!providerOrder?.status) continue;
 
-        if (providerOrder.status === "paid") {
-          // Do not release stock for a paid Razorpay order.
-          // Reconciliation must mark it PAID.
+        if (providerOrder.status === "paid") continue;
+        if (
+          providerOrder.status !== "created" &&
+          providerOrder.status !== "attempted"
+        )
           continue;
-        }
-
-        if (providerOrder.status !== "created") {
-          // Unknown provider state: leave it for another check.
-          continue;
-        }
 
         const providerPayments = await razorpay.orders.fetchPayments(
           payment.razorpayOrderId,
         );
 
-        const attempts = providerPayments.items || [];
+        const attempts = providerPayments?.items || [];
 
         const hasCapturedPayment = attempts.some(
           (attempt) => attempt.status === "captured",
@@ -56,19 +49,16 @@ export const processExpiredPayments = async () => {
             attempt.status === "authorized" || attempt.status === "created",
         );
 
-        if (hasCapturedPayment || hasPendingPayment) {
-          // Never release stock while payment may still complete.
-          continue;
-        }
+        if (hasCapturedPayment || hasPendingPayment) continue;
 
         await expireCheckout(payment._id);
+        
       } catch (error) {
-        console.error(
-          `Could not process expired payment ${payment._id}:`,
-          error,
-        );
+        console.error(`[PaymentExpiry] Failed for ${payment._id}:`, error);
       }
     }
+  } catch (error) {
+    console.error("[PaymentExpiry] Worker failed:", error);
   } finally {
     running = false;
   }
