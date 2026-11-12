@@ -128,6 +128,18 @@ const orderSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
+
+    },
+    
+    deliveryMethod: {
+      type: String,
+      enum: ["MANUAL", "AUTO"],
+      default: null,
+    },
+
+    deliveredAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true },
