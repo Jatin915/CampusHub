@@ -6,12 +6,8 @@ import Order from "./order.model.js";
 import { ORDER_STATUS, PAYMENT_STATUS } from "./order.constants.js";
 import ApiError from "../../utils/ApiError.js";
 
-
 export const createOrdersFromCart = async (userId, selectedProductIds) => {
-  if (
-    !Array.isArray(selectedProductIds) ||
-    selectedProductIds.length === 0
-  ) {
+  if (!Array.isArray(selectedProductIds) || selectedProductIds.length === 0) {
     throw new ApiError(400, "Please select at least one product.");
   }
 
@@ -50,14 +46,14 @@ export const createOrdersFromCart = async (userId, selectedProductIds) => {
 
       // Select only products requested by the frontend.
       const selectedCartItems = cart.items.filter((item) =>
-        selectedSet.has(item.product.toString())
+        selectedSet.has(item.product.toString()),
       );
 
       // Every requested product must belong to this user's cart.
       if (selectedCartItems.length !== selectedIds.length) {
         throw new ApiError(
           400,
-          "One or more selected products are not in your cart."
+          "One or more selected products are not in your cart.",
         );
       }
 
@@ -83,28 +79,25 @@ export const createOrdersFromCart = async (userId, selectedProductIds) => {
           {
             returnDocument: "after",
             session,
-          }
+          },
         );
 
         if (!product) {
           throw new ApiError(
             400,
-            "A selected product is unavailable or has insufficient stock."
+            "A selected product is unavailable or has insufficient stock.",
           );
         }
 
         if (product.college.toString() !== buyer.college.toString()) {
           throw new ApiError(
             403,
-            "You can only order products from your own college."
+            "You can only order products from your own college.",
           );
         }
 
         if (product.seller.toString() === buyer._id.toString()) {
-          throw new ApiError(
-            400,
-            "You cannot purchase your own product."
-          );
+          throw new ApiError(400, "You cannot purchase your own product.");
         }
 
         const sellerId = product.seller.toString();
@@ -148,7 +141,7 @@ export const createOrdersFromCart = async (userId, selectedProductIds) => {
 
       // Remove only purchased products from the cart.
       cart.items = cart.items.filter(
-        (item) => !selectedSet.has(item.product.toString())
+        (item) => !selectedSet.has(item.product.toString()),
       );
 
       await cart.save({ session });
@@ -160,12 +153,11 @@ export const createOrdersFromCart = async (userId, selectedProductIds) => {
   }
 };
 
-
 export const getMyOrders = async (userId, query) => {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
   const limit = Math.min(
     20,
-    Math.max(1, Number.parseInt(query.limit, 10) || 10)
+    Math.max(1, Number.parseInt(query.limit, 10) || 10),
   );
 
   const skip = (page - 1) * limit;
@@ -208,7 +200,6 @@ export const getMyOrders = async (userId, query) => {
   };
 };
 
-
 export const getOrderDetails = async (orderId, userId) => {
   if (!mongoose.isValidObjectId(orderId)) {
     throw new ApiError(400, "Invalid order ID.");
@@ -229,6 +220,103 @@ export const getOrderDetails = async (orderId, userId) => {
   return order;
 };
 
+export const markOrderProcessing = async (orderId, sellerId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: orderId,
+      seller: sellerId,
+      status: ORDER_STATUS.CONFIRMED,
+      "payment.status": PAYMENT_STATUS.PAID,
+    },
+    {
+      $set: {
+        status: ORDER_STATUS.PROCESSING,
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    },
+  )
+    .populate("buyer", "fullName email")
+    .populate("seller", "fullName email")
+    .lean();
+
+  if (!order) {
+    const existingOrder = await Order.findOne({
+      _id: orderId,
+      seller: sellerId,
+    }).lean();
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    if (existingOrder.status !== ORDER_STATUS.CONFIRMED) {
+      throw new ApiError(
+        409,
+        `Order cannot be moved to PROCESSING from ${existingOrder.status}.`,
+      );
+    }
+
+    throw new ApiError(409, "Order cannot be processed.");
+  }
+
+  return order;
+};
+
+export const markOrderReadyForPickup = async (orderId, sellerId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  const order = await Order.findOneAndUpdate(
+    {
+      _id: orderId,
+      seller: sellerId,
+      status: ORDER_STATUS.PROCESSING,
+      "payment.status": PAYMENT_STATUS.PAID,
+    },
+    {
+      $set: {
+        status: ORDER_STATUS.READY_FOR_PICKUP,
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    },
+  )
+    .populate("buyer", "fullName email")
+    .populate("seller", "fullName email")
+    .lean();
+
+  if (!order) {
+    const existingOrder = await Order.findOne({
+      _id: orderId,
+      seller: sellerId,
+    }).lean();
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    if (existingOrder.status !== ORDER_STATUS.PROCESSING) {
+      throw new ApiError(
+        409,
+        `Order cannot be moved to READY_FOR_PICKUP from ${existingOrder.status}.`,
+      );
+    }
+
+    throw new ApiError(409, "Order cannot be marked ready for pickup.");
+  }
+
+  return order;
+};
 
 export const confirmOrderReceived = async (orderId, buyerId) => {
   if (!mongoose.isValidObjectId(orderId)) {
@@ -236,9 +324,8 @@ export const confirmOrderReceived = async (orderId, buyerId) => {
   }
 
   const now = new Date();
-  const autoDeliveryAt = new Date(
-    now.getTime() + 24 * 60 * 60 * 1000
-  );
+
+  const autoDeliveryAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
   const order = await Order.findOneAndUpdate(
     {
@@ -257,16 +344,19 @@ export const confirmOrderReceived = async (orderId, buyerId) => {
       },
     },
     {
-      returnDocument: 'after',
+      returnDocument: "after",
       runValidators: true,
-    }
-  );
+    },
+  )
+    .populate("seller", "fullName email")
+    .populate("college", "name")
+    .lean();
 
   if (!order) {
     const existingOrder = await Order.findOne({
       _id: orderId,
       buyer: buyerId,
-    }).select("status payment.status meetup");
+    }).lean();
 
     if (!existingOrder) {
       throw new ApiError(404, "Order not found.");
@@ -276,14 +366,81 @@ export const confirmOrderReceived = async (orderId, buyerId) => {
       throw new ApiError(409, "You have already confirmed receipt.");
     }
 
-    if (existingOrder.payment.status !== PAYMENT_STATUS.PAID) {
-      throw new ApiError(400, "Order payment is not completed.");
+    if (existingOrder.payment?.status !== PAYMENT_STATUS.PAID) {
+      throw new ApiError(409, "Payment has not been completed.");
     }
 
-    throw new ApiError(
-      400,
-      "Order is not ready for pickup."
-    );
+    if (existingOrder.status !== ORDER_STATUS.READY_FOR_PICKUP) {
+      throw new ApiError(409, "Order is not ready for pickup confirmation.");
+    }
+
+    throw new ApiError(409, "Order cannot be confirmed in its current state.");
+  }
+
+  return order;
+};
+
+export const confirmOrderHandover = async (orderId, sellerId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  const order = await Order.findOneAndUpdate(
+    {
+    _id: orderId,
+    seller: sellerId,
+    status: ORDER_STATUS.AWAITING_CONFIRMATION,
+    "payment.status": PAYMENT_STATUS.PAID,
+    "meetup.buyerConfirmedAt": { $ne: null },
+    "meetup.sellerConfirmedAt": null,
+  },
+  {
+    $set: {
+      "meetup.sellerConfirmedAt": now,
+      status: ORDER_STATUS.DELIVERED,
+      deliveryMethod: "MANUAL",
+      deliveredAt: now,
+      "meetup.autoDeliveryAt": null,
+    },
+  },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    },
+  )
+    .populate("buyer", "fullName email")
+    .populate("seller", "fullName email")
+    .lean();
+
+  if (!order) {
+    const existingOrder = await Order.findOne({
+      _id: orderId,
+      seller: sellerId,
+    }).lean();
+
+    if (!existingOrder) {
+      throw new ApiError(404, "Order not found.");
+    }
+
+    if (!existingOrder.meetup?.buyerConfirmedAt) {
+      throw new ApiError(
+        409,
+        "Buyer must confirm receipt before seller confirmation.",
+      );
+    }
+
+    if (existingOrder.meetup?.sellerConfirmedAt) {
+      throw new ApiError(409, "You have already confirmed the handover.");
+    }
+
+    if (existingOrder.status !== ORDER_STATUS.AWAITING_CONFIRMATION) {
+      throw new ApiError(
+        409,
+        `Order cannot be confirmed from ${existingOrder.status} status.`,
+      );
+    }
+
+    throw new ApiError(409, "Order handover cannot be confirmed.");
   }
 
   return order;

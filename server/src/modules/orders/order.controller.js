@@ -2,7 +2,10 @@ import {
   createOrdersFromCart,
   getMyOrders,
   getOrderDetails,
+  markOrderProcessing,
+  markOrderReadyForPickup,
   confirmOrderReceived,
+  confirmOrderHandover
 } from "./order.service.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import asyncHandler from "../../utils/asyncHandler.js";
@@ -51,6 +54,43 @@ export const getOrderDetailsController = asyncHandler(
   }
 );
 
+
+export const markOrderProcessingController = asyncHandler(
+  async (req, res) => {
+    const order = await markOrderProcessing(
+      req.params.orderId,
+      req.user._id,
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        "Order marked as processing successfully.",
+        order,
+      ),
+    );
+  },
+);
+
+
+export const markOrderReadyForPickupController = asyncHandler(
+  async (req, res) => {
+    const order = await markOrderReadyForPickup(
+      req.params.orderId,
+      req.user._id,
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        "Order marked as ready for pickup successfully.",
+        order,
+      ),
+    );
+  },
+);
+
+
 export const confirmOrderReceivedController = asyncHandler(
   async (req, res) => {
     const order = await confirmOrderReceived(
@@ -66,4 +106,22 @@ export const confirmOrderReceivedController = asyncHandler(
       )
     );
   }
+);
+
+
+export const confirmOrderHandoverController = asyncHandler(
+  async (req, res) => {
+    const order = await confirmOrderHandover(
+      req.params.orderId,
+      req.user._id,
+    );
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        "Order handover confirmed successfully.",
+        order,
+      ),
+    );
+  },
 );
