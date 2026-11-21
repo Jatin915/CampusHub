@@ -1,13 +1,16 @@
 import crypto from "crypto";
 import Payment from "./payment.model.js";
 import { env } from "../../config/env.js";
-// import razorpay from "../../config/razorpay.js";
 import {
   claimWebhookEvent,
   markWebhookEventProcessed,
   releaseWebhookEventClaim,
 } from "./webhookEvent.service.js";
-import { createCheckoutSession, verifyCheckoutPayment } from "./payment.service.js";
+import {
+  createCheckoutSession,
+  resumeCheckoutSession,
+  verifyCheckoutPayment,
+} from "./payment.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiError from "../../utils/ApiError.js";
 import ApiResponse from "../../utils/ApiResponse.js";
@@ -25,16 +28,28 @@ export const createCheckout = asyncHandler(async (req, res) => {
   return res.status(201).json(checkout);
 });
 
+// RESUME CHECKOUT
+export const resumeCheckout = asyncHandler(async (req, res) => {
+  const checkout = await resumeCheckoutSession(
+    req.user._id,
+    req.params.orderId,
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Checkout session resumed successfully.",
+    data: checkout,
+  });
+});
 
 // VERIFY PAYMENT
 export const verifyPayment = asyncHandler(async (req, res) => {
   const result = await verifyCheckoutPayment(req.user._id, req.body);
 
-  return res.status(200).json(
-    new ApiResponse(200, "Payment verification completed.", result),
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Payment verification completed.", result));
 });
-
 
 // RAZORPAY WEBHOOK
 export const razorpayWebhook = asyncHandler(async (req, res) => {
@@ -106,8 +121,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
   const paymentEntity = event.payload?.payment?.entity ?? null;
 
   const razorpayOrderId =
-    paymentEntity?.order_id ??
-    event.payload?.order?.entity?.id;
+    paymentEntity?.order_id ?? event.payload?.order?.entity?.id;
 
   const razorpayPaymentId = paymentEntity?.id;
 
@@ -179,10 +193,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
     );
 
     if (!markedProcessed) {
-      throw new ApiError(
-        409,
-        "Webhook processing ownership was lost.",
-      );
+      throw new ApiError(409, "Webhook processing ownership was lost.");
     }
 
     // 16. Send success response
@@ -195,10 +206,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
     try {
       await releaseWebhookEventClaim(eventId, processingToken);
     } catch (cleanupError) {
-      console.error(
-        "Webhook claim cleanup failed:",
-        cleanupError.message,
-      );
+      console.error("Webhook claim cleanup failed:", cleanupError.message);
     }
 
     throw error;

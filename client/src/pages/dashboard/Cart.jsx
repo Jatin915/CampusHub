@@ -13,7 +13,8 @@ import {
   removeCartItem,
 } from "../../services/cartService";
 
-import { createCheckout, verifyPayment } from "../../services/paymentService";
+import { createCheckout } from "../../services/paymentService";
+import { openRazorpayCheckout } from "../../utils/openRazorpayCheckout";
 
 const formatPrice = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -168,116 +169,69 @@ const Cart = () => {
         throw new Error("Invalid checkout response from server.");
       }
 
-      // Step 2: Configure Razorpay.
-      const options = {
-        key: checkout.keyId,
-        amount: checkout.amount,
-        currency: checkout.currency,
-        name: "CampusHub",
-        description: "Campus marketplace purchase",
-        order_id: checkout.razorpayOrderId,
+      // Step 2: Open Razorpay using reusable helper.
+      openRazorpayCheckout({
+        checkout,
 
-        // Step 3: Razorpay payment success handler.
-        handler: async (razorpayResponse) => {
-          // Set this immediately, before awaiting verification.
-          paymentHandlerStartedRef.current = true;
+        onSuccess: (verificationResponse) => {
+          const paymentStatus =
+            verificationResponse?.data?.status ?? verificationResponse?.status;
 
-          try {
-            setError("");
-
-            const verificationResponse = await verifyPayment({
-              paymentId: checkout.paymentId,
-              razorpay_order_id: razorpayResponse.razorpay_order_id,
-              razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-              razorpay_signature: razorpayResponse.razorpay_signature,
-            });
-            console.log("Verification response:", verificationResponse);
-
-            const paymentStatus =
-              verificationResponse?.data?.status ??
-              verificationResponse?.status;
-
-            if (paymentStatus !== "PAID") {
-              console.log(
-                "Unexpected verification response:",
-                verificationResponse,
-              );
-              throw new Error("Payment verification failed.");
-            }
-
-            paymentVerifiedRef.current = true;
-
-            // Step 4: Update cart only after successful verification.
-            setCart((current) =>
-              current.filter(
-                (product) => !productIdsToOrder.includes(product.id),
-              ),
-            );
-
-            setSelectedIds((current) =>
-              current.filter((id) => !productIdsToOrder.includes(id)),
-            );
-
-            setError("");
-          } catch (error) {
-            console.error(
-              "Payment verification failed:",
-              error.response?.data?.message || error.message,
-            );
-
+          if (paymentStatus !== "PAID") {
             setError(
               "Payment verification is pending. Please check your orders before retrying.",
             );
-          } finally {
             setCheckoutLoading(false);
+            return;
           }
+
+          paymentVerifiedRef.current = true;
+
+          // Update cart only after successful verification.
+          setCart((current) =>
+            current.filter(
+              (product) => !productIdsToOrder.includes(product.id),
+            ),
+          );
+
+          setSelectedIds((current) =>
+            current.filter((id) => !productIdsToOrder.includes(id)),
+          );
+
+          setError("");
+          setCheckoutLoading(false);
         },
 
-        // Step 5: Handle modal dismissal.
-        modal: {
-          ondismiss: () => {
-            // Do not show a cancellation error if payment
-            // verification has already started or completed.
-            if (
-              paymentHandlerStartedRef.current ||
-              paymentVerifiedRef.current ||
-              paymentFailedRef.current
-            ) {
-              return;
-            }
+        onError: (message) => {
+          paymentFailedRef.current = true;
 
-            setError(
-              "Checkout closed. Your payment status may still be pending. Please check My Orders before trying again.",
-            );
-
-            setCheckoutLoading(false);
-          },
+          setError("");
+          alert("Your payment status may still be pending. Please check My Orders before trying again. Your cart is unchanged. You can try again.");
+          setCheckoutLoading(false);
         },
 
-        theme: {
-          color: "#0f172a",
+        onClose: () => {
+          if (
+            paymentHandlerStartedRef.current ||
+            paymentVerifiedRef.current ||
+            paymentFailedRef.current
+          ) {
+            return;
+          }
+
+          setError("");
+          
+          setCheckoutLoading(false);
         },
-      };
 
-      const razorpay = new window.Razorpay(options);
+        onPaymentStart: () => {
+          paymentHandlerStartedRef.current = true;
+        },
 
-      // Step 6: Handle actual payment failure.
-      razorpay.on("payment.failed", (response) => {
-        paymentFailedRef.current = true;
-
-        console.error(
-          "Payment failed:",
-          response.error?.description || "Unknown payment error",
-        );
-
-        setError(
-          "Payment attempt failed. Your cart is unchanged. You can try again.",
-        );
-
-        setCheckoutLoading(false);
+        onPaymentFailure: () => {
+          paymentFailedRef.current = true;
+        },
       });
-
-      razorpay.open();
     } catch (error) {
       console.error(
         "Checkout failed:",

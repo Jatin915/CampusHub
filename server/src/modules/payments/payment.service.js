@@ -278,14 +278,13 @@ export const createCheckoutSession = async (
         },
       }));
 
-      createdOrders = await Order.create(orderDocuments, { 
+      createdOrders = await Order.create(orderDocuments, {
         session,
-        ordered: true        
-       });
+        ordered: true,
+      });
 
       payment.orders = createdOrders.map((order) => order._id);
       await payment.save({ session });
-      
     });
   } finally {
     await session.endSession();
@@ -311,6 +310,173 @@ export const createCheckoutSession = async (
   payment.razorpayOrderId = razorpayOrder.id;
   await payment.save();
 
+  return buildCheckoutResponse(payment);
+};
+
+
+const verifyRazorpayOrderForResume = async (payment) => {
+  let razorpayOrder;
+  let paymentAttempts;
+
+  try {
+    razorpayOrder = await razorpay.orders.fetch(
+      payment.razorpayOrderId,
+    );
+
+    paymentAttempts = await razorpay.orders.fetchPayments(
+      payment.razorpayOrderId,
+    );
+  } catch (error) {
+    console.error("Razorpay state verification failed:", error);
+
+    throw new ApiError(
+      502,
+      "Unable to verify payment status. Please try again later.",
+    );
+  }
+
+  // Verify the fetched order belongs to this checkout.
+  if (
+    razorpayOrder.id !== payment.razorpayOrderId ||
+    razorpayOrder.amount !== payment.amount ||
+    razorpayOrder.currency !== payment.currency
+  ) {
+    throw new ApiError(
+      409,
+      "Razorpay order details do not match this checkout.",
+    );
+  }
+
+  // A paid order must never be resumed.
+  if (razorpayOrder.status === "paid") {
+    throw new ApiError(
+      409,
+      "Payment has already been completed. Please check your orders.",
+    );
+  }
+
+  // Only created or attempted orders can potentially be resumed.
+  if (
+    !["created", "attempted"].includes(razorpayOrder.status)
+  ) {
+    throw new ApiError(
+      409,
+      "This Razorpay order cannot be resumed.",
+    );
+  }
+
+  const attempts = paymentAttempts.items || [];
+
+  for (const attempt of attempts) {
+    // Every payment attempt must belong to this order and match its amount.
+    if (
+      attempt.order_id !== payment.razorpayOrderId ||
+      attempt.amount !== payment.amount ||
+      attempt.currency !== payment.currency
+    ) {
+      throw new ApiError(
+        409,
+        "Payment attempt details could not be verified.",
+      );
+    }
+
+    if (["captured", "refunded"].includes(attempt.status)) {
+      throw new ApiError(
+        409,
+        "A successful payment already exists. Please check your orders.",
+      );
+    }
+
+    if (attempt.status === "authorized") {
+      throw new ApiError(
+        409,
+        "Payment is authorized and requires verification. Please do not retry.",
+      );
+    }
+
+    // Fail closed for any unexpected provider status.
+    if (!["created", "failed"].includes(attempt.status)) {
+      throw new ApiError(
+        409,
+        "Payment status is not eligible for checkout retry.",
+      );
+    }
+  }
+
+  return true;
+};
+
+// RESUME CHECKOUT SESSION
+export const resumeCheckoutSession = async (userId, orderId) => {
+  if (!mongoose.isValidObjectId(orderId)) {
+    throw new ApiError(400, "Invalid order ID.");
+  }
+
+  // 1. Find the order belonging to the logged-in buyer.
+  const order = await Order.findOne({
+    _id: orderId,
+    buyer: userId,
+  });
+
+  if (!order) {
+    throw new ApiError(404, "Order not found.");
+  }
+
+  // 2. Only pending-payment orders can resume checkout.
+  if (order.status !== ORDER_STATUS.PENDING_PAYMENT) {
+    throw new ApiError(409, "This order cannot resume checkout.");
+  }
+
+  // 3. Find the checkout payment linked to this order.
+  const payment = await Payment.findOne({
+    buyer: userId,
+    orders: order._id,
+  });
+
+  if (!payment) {
+    throw new ApiError(404, "Checkout session not found.");
+  }
+
+  // 4. Check local payment status.
+  if (payment.status === "PAID") {
+    throw new ApiError(409, "This checkout has already been paid.");
+  }
+
+  if (payment.status !== "CREATED") {
+    throw new ApiError(409, "This checkout is no longer payable.");
+  }
+
+  // 5. Check local expiry.
+  if (payment.expiresAt <= new Date()) {
+    throw new ApiError(
+      409,
+      "Checkout session expired. Please create a new order.",
+    );
+  }
+
+  // 6. Ensure Razorpay order exists.
+  if (!payment.razorpayOrderId) {
+    throw new ApiError(409, "Razorpay checkout is unavailable.");
+  }
+
+  // 7. Verify actual Razorpay order and payment-attempt states.
+  await verifyRazorpayOrderForResume(payment);
+
+  // 8. Ensure every seller-wise order is still pending payment.
+  const pendingOrders = await Order.countDocuments({
+    _id: { $in: payment.orders },
+    buyer: userId,
+    status: ORDER_STATUS.PENDING_PAYMENT,
+  });
+
+  if (pendingOrders !== payment.orders.length) {
+    throw new ApiError(
+      409,
+      "One or more orders are no longer eligible for payment.",
+    );
+  }
+
+  // 9. Return existing checkout details.
   return buildCheckoutResponse(payment);
 };
 
@@ -448,7 +614,6 @@ export const verifyCheckoutPayment = async (userId, payload) => {
   return { paymentId: payment._id, status: "PAID" };
 };
 
-
 export const expireCheckout = async (paymentId) => {
   const payment = await Payment.findById(paymentId);
 
@@ -460,8 +625,5 @@ export const expireCheckout = async (paymentId) => {
     return;
   }
 
-  await releaseReservedStock(
-    payment._id,
-    CHECKOUT_PAYMENT_STATUS.EXPIRED,
-  );
+  await releaseReservedStock(payment._id, CHECKOUT_PAYMENT_STATUS.EXPIRED);
 };

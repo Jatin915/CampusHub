@@ -3,9 +3,11 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
+import LandingPage from "./pages/LandingPage";
 import Home from "./pages/dashboard/Home";
 import Cart from "./pages/dashboard/Cart";
-import LandingPage from "./pages/LandingPage";
+import MyOrders from "./pages/dashboard/MyOrders";
+import OrderDetails from "./pages/dashboard/OrderDetails";
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard/home" element={<Home />} />
             <Route path="/dashboard/cart" element={<Cart />} />
+            <Route path="/dashboard/orders" element={<MyOrders />} />
+            <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
           </Route>
         </Routes>
     </BrowserRouter>
