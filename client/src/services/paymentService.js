@@ -14,3 +14,11 @@ export const verifyPayment = async (paymentDetails) => {
 
   return response.data;
 };
+
+export const resumeCheckout = async (orderId) => {
+  const response = await api.post(
+    `/payments/resume-checkout/${orderId}`,
+  );
+
+  return response.data;
+};
