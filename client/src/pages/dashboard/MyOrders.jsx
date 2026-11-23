@@ -8,7 +8,7 @@ import {
   Eye,
   RefreshCw,
 } from "lucide-react";
-import DashboardLayout from "../../components/dashboard/DashboardLayout";
+import DashboardLayout from "../../components/home/DashboardLayout";
 import { getMyOrders } from "../../services/orderServices";
 import { resumeCheckout } from "../../services/paymentService";
 import { openRazorpayCheckout } from "../../utils/openRazorpayCheckout";

@@ -78,27 +78,18 @@ export const updateCategory = async ({
 };
 
 export const softDeleteCategory = async ({
-  categoryId, isActive
+  categoryId,
+  collegeId,
+  isActive
 }) => {
   const category = await Category.findOne({
     _id: categoryId,
+    college: collegeId,
   });
 
   if (!category) {
     throw new ApiError(404, "Category not found.");
   }
-
-  // if (!category.isActive) {
-  //   throw new ApiError(
-  //     400,
-  //     "Category is already inactive.",
-  //   );
-  // }
-
-  // return (isActive === category.isActive) ?  : {
-  //   (isActive === false) ? category.isActive = false : category.isActive = true
-  //   await category.save();
-  // }
 
   if(isActive === category.isActive) {
     return category;
@@ -107,8 +98,6 @@ export const softDeleteCategory = async ({
     await category.save();
     return category;
   }
-
-  // category.isActive = false;
 };
 
 export const hardDeleteCategory = async ({

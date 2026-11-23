@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingCart, ArrowRight } from "lucide-react";
 
-import DashboardLayout from "../../components/dashboard/DashboardLayout";
+
+import DashboardLayout from "../../components/home/DashboardLayout";
 import CartItem from "../../components/cart/CartItem";
 import CartSummary from "../../components/cart/CartSummary";
 import CartBenefits from "../../components/cart/CartBenefits";

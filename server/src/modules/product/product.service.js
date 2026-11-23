@@ -87,3 +87,50 @@ export const createProduct = async ({
 
   return product;
 };
+
+
+export const getMarketplaceProducts = async ({
+  collegeId,
+  page = 1,
+  limit = 12,
+  sort = "newest",
+}) => {
+  const currentPage = Math.max(1, Number(page) || 1);
+  const pageLimit = Math.min(50, Math.max(1, Number(limit) || 12));
+
+  const sortOptions = {
+    newest: { createdAt: -1 },
+    price_asc: { price: 1 },
+    price_desc: { price: -1 },
+  };
+
+  const sortBy = sortOptions[sort] || sortOptions.newest;
+
+  const filter = {
+    college: collegeId,
+    isActive: true,
+    quantity: { $gt: 0 },
+  };
+
+  const [products, totalProducts] = await Promise.all([
+    Product.find(filter)
+      .populate("category", "name")
+      .populate("seller", "fullName avatar")
+      .sort(sortBy)
+      .skip((currentPage - 1) * pageLimit)
+      .limit(pageLimit)
+      .lean(),
+
+    Product.countDocuments(filter),
+  ]);
+
+  return {
+    products,
+    pagination: {
+      currentPage,
+      totalPages: Math.ceil(totalProducts / pageLimit),
+      totalProducts,
+      limit: pageLimit,
+    },
+  };
+};
