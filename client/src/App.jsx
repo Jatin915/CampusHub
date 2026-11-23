@@ -12,6 +12,7 @@ import Home from "./pages/dashboard/Home";
 import Cart from "./pages/dashboard/Cart";
 import MyOrders from "./pages/dashboard/MyOrders";
 import OrderDetails from "./pages/dashboard/OrderDetails";
+import ProductDetails from "./pages/dashboard/ProductDetails";
 
 function App() {
   return (
@@ -29,10 +30,8 @@ function App() {
           <Route path="/dashboard/home" element={<Home />} />
           <Route path="/dashboard/cart" element={<Cart />} />
           <Route path="/dashboard/orders" element={<MyOrders />} />
-          <Route
-            path="/dashboard/orders/:orderId"
-            element={<OrderDetails />}
-          />
+          <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
+          <Route path="/dashboard/products/:productId" element={<ProductDetails />} />
         </Route>
       </Routes>
     </BrowserRouter>

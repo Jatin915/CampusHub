@@ -1,5 +1,5 @@
-
 import { Package } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("en-IN", {
@@ -20,7 +20,10 @@ const ProductCard = ({ product }) => {
   const imageUrl = product.images?.[0]?.url;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-1 hover:shadow-lg">
+    <Link
+      to={`/dashboard/products/${product._id}`}
+      className="block overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-1 hover:shadow-lg"
+    >
       <div className="relative flex h-48 items-center justify-center bg-slate-100">
         {imageUrl ? (
           <img
@@ -60,7 +63,7 @@ const ProductCard = ({ product }) => {
           </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 };
 
