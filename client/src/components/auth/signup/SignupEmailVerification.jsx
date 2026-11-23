@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   sendVerificationCode,
   verifyVerificationCode,
-} from "../../../services/authService";
+} from "../../../services/authServices";
 
 const SignupEmailVerification = ({
   email,

@@ -4,9 +4,10 @@ export const getMarketplaceProducts = async ({
   page = 1,
   limit = 12,
   sort = "newest",
+  categoryId,
 } = {}) => {
   const response = await api.get("/products", {
-    params: { page, limit, sort },
+    params: { page, limit, sort, categoryId },
   });
 
   return response.data;

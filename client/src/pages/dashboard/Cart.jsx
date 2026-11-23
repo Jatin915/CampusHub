@@ -12,9 +12,9 @@ import {
   getCart,
   updateCartItem,
   removeCartItem,
-} from "../../services/cartService";
+} from "../../services/cartServices";
 
-import { createCheckout } from "../../services/paymentService";
+import { createCheckout } from "../../services/paymentServices";
 import { openRazorpayCheckout } from "../../utils/openRazorpayCheckout";
 
 const formatPrice = (amount) =>

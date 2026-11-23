@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "../../components/home/DashboardLayout";
 import { getMyOrders } from "../../services/orderServices";
-import { resumeCheckout } from "../../services/paymentService";
+import { resumeCheckout } from "../../services/paymentServices";
 import { openRazorpayCheckout } from "../../utils/openRazorpayCheckout";
 
 const ORDER_STATUSES = [
