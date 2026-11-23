@@ -95,6 +95,7 @@ export const getMarketplaceProducts = async ({
   page = 1,
   limit = 12,
   sort = "newest",
+  categoryId
 }) => {
   const currentPage = Math.max(1, Number(page) || 1);
   const pageLimit = Math.min(50, Math.max(1, Number(limit) || 12));
@@ -112,6 +113,14 @@ export const getMarketplaceProducts = async ({
     isActive: true,
     quantity: { $gt: 0 },
   };
+
+  if (categoryId) {
+  if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+    throw new ApiError(400, "Invalid category ID.");
+  }
+
+  filter.category = categoryId;
+}
 
   const [products, totalProducts] = await Promise.all([
     Product.find(filter)

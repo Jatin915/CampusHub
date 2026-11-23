@@ -1,4 +1,4 @@
-import { verifyPayment } from "../services/paymentService";
+import { verifyPayment } from "../services/paymentServices";
 
 export const openRazorpayCheckout = ({
   checkout,

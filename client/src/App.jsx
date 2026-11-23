@@ -13,6 +13,7 @@ import Cart from "./pages/dashboard/Cart";
 import MyOrders from "./pages/dashboard/MyOrders";
 import OrderDetails from "./pages/dashboard/OrderDetails";
 import ProductDetails from "./pages/dashboard/ProductDetails";
+import Categories from "./pages/dashboard/Categories";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/dashboard/orders" element={<MyOrders />} />
           <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
           <Route path="/dashboard/products/:productId" element={<ProductDetails />} />
+          <Route path="/dashboard/categories" element={<Categories />} />
         </Route>
       </Routes>
     </BrowserRouter>

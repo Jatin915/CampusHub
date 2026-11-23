@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 
 import DashboardLayout from "../../components/home/DashboardLayout";
-import { getProductDetails } from "../../services/productService";
-import { addToCart } from "../../services/cartService";
+import { getProductDetails } from "../../services/productServices";
+import { addToCart } from "../../services/cartServices";
 import { Minus, Plus, CheckCircle2 } from "lucide-react";
 
 const formatPrice = (price) => {
@@ -276,67 +276,65 @@ const ProductDetails = () => {
               </p>
             </div>
 
-            
-<div className="space-y-4">
-  {/* Quantity Selector */}
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Quantity
-    </label>
+            <div className="space-y-4">
+              {/* Quantity Selector */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Quantity
+                </label>
 
-    <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-200">
-      <button
-        onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-        disabled={quantity <= 1 || addingToCart}
-        className="p-3 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-      >
-        <Minus size={16} />
-      </button>
+                <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-200">
+                  <button
+                    onClick={() =>
+                      setQuantity((current) => Math.max(1, current - 1))
+                    }
+                    disabled={quantity <= 1 || addingToCart}
+                    className="p-3 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    <Minus size={16} />
+                  </button>
 
-      <span className="min-w-12 text-center text-sm font-semibold">
-        {quantity}
-      </span>
+                  <span className="min-w-12 text-center text-sm font-semibold">
+                    {quantity}
+                  </span>
 
-      <button
-        onClick={() =>
-          setQuantity((current) => Math.min(product.quantity, current + 1))
-        }
-        disabled={quantity >= product.quantity || addingToCart}
-        className="p-3 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-      >
-        <Plus size={16} />
-      </button>
-    </div>
+                  <button
+                    onClick={() =>
+                      setQuantity((current) =>
+                        Math.min(product.quantity, current + 1),
+                      )
+                    }
+                    disabled={quantity >= product.quantity || addingToCart}
+                    className="p-3 text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
 
-    <p className="mt-2 text-xs text-slate-500">
-      {product.quantity} units available
-    </p>
-  </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  {product.quantity} units available
+                </p>
+              </div>
 
-  {/* Add to Cart */}
-  <button
-    onClick={handleAddToCart}
-    disabled={addingToCart || product.quantity < 1}
-    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-  >
-    <ShoppingBag size={19} />
-    {addingToCart ? "Adding..." : "Add to Cart"}
-  </button>
+              {/* Add to Cart */}
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart || product.quantity < 1}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <ShoppingBag size={19} />
+                {addingToCart ? "Adding..." : "Add to Cart"}
+              </button>
 
-  {cartMessage && (
-    <p className="flex items-center gap-2 text-sm text-green-700">
-      <CheckCircle2 size={17} />
-      {cartMessage}
-    </p>
-  )}
+              {cartMessage && (
+                <p className="flex items-center gap-2 text-sm text-green-700">
+                  <CheckCircle2 size={17} />
+                  {cartMessage}
+                </p>
+              )}
 
-  {cartError && (
-    <p className="text-sm text-red-600">
-      {cartError}
-    </p>
-  )}
-</div>
-
+              {cartError && <p className="text-sm text-red-600">{cartError}</p>}
+            </div>
           </section>
         </div>
       </div>

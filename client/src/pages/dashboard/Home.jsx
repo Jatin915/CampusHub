@@ -14,7 +14,7 @@ import ProductCard from "../../components/home/ProductCard";
 
 import useAuth from "../../hooks/useAuth";
 import { getCategories } from "../../services/categoryServices";
-import { getMarketplaceProducts } from "../../services/productService";
+import { getMarketplaceProducts } from "../../services/productServices";
 
 const Home = () => {
   const { user } = useAuth();
