@@ -14,7 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-import DashboardLayout from "../../components/dashboard/DashboardLayout";
+import DashboardLayout from "../../components/home/DashboardLayout";
 import {
   getOrderById,
   confirmOrderReceived,

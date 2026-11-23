@@ -31,6 +31,7 @@ const DashboardLayout = ({ children }) => {
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  console.log("user:", user);
 
   const isLoggedIn = Boolean(user);
   const displayName = user?.name || user?.fullName || "Student";

@@ -5,7 +5,7 @@ import WhyChooseUs from "../components/landingpage/WhyChooseUs";
 import HowItWorks from "../components/landingpage/HowItWorks";
 import CallToAction from "../components/landingpage/CallToAction";
 import Footer from "../components/landingpage/Footer";
-import DashboardLayout from "../components/dashboard/DashboardLayout";
+import DashboardLayout from "../components/home/DashboardLayout";
 
 const LandingPage = () => {
   return (

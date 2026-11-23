@@ -1,9 +1,13 @@
+
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
+
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import LandingPage from "./pages/LandingPage";
+
 import Home from "./pages/dashboard/Home";
 import Cart from "./pages/dashboard/Cart";
 import MyOrders from "./pages/dashboard/MyOrders";
@@ -13,21 +17,24 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route element={<PublicRoute />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Route>
-      </Routes>
 
-        <Routes>
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard/home" element={<Home />} />
-            <Route path="/dashboard/cart" element={<Cart />} />
-            <Route path="/dashboard/orders" element={<MyOrders />} />
-            <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
-          </Route>
-        </Routes>
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard/home" element={<Home />} />
+          <Route path="/dashboard/cart" element={<Cart />} />
+          <Route path="/dashboard/orders" element={<MyOrders />} />
+          <Route
+            path="/dashboard/orders/:orderId"
+            element={<OrderDetails />}
+          />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }

@@ -64,6 +64,7 @@ export const softDeleteCategoryController = asyncHandler(
   async (req, res) => {
     const category = await softDeleteCategory({
       categoryId: req.params.id,
+      collegeId: req.user.college,
       isActive: req.body.isActive,
     });
 
