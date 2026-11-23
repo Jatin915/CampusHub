@@ -2,6 +2,7 @@ import Product from "./product.model.js";
 import Category from "../categories/category.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { PRODUCT_CONDITION_VALUES } from "./product.constants.js";
+import mongoose from "mongoose";
 
 export const createProduct = async ({
   name,
@@ -133,4 +134,28 @@ export const getMarketplaceProducts = async ({
       limit: pageLimit,
     },
   };
+};
+
+export const getProductDetails = async ({
+  productId,
+  collegeId,
+}) => {
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    throw new ApiError(400, "Invalid product ID.");
+  }
+
+  const product = await Product.findOne({
+    _id: productId,
+    college: collegeId,
+    isActive: true,
+    quantity: { $gt: 0 },
+  })
+    .populate("category", "name")
+    .populate("seller", "fullName avatar");
+
+  if (!product) {
+    throw new ApiError(404, "Product not found.");
+  }
+
+  return product;
 };

@@ -1,7 +1,7 @@
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 
-import { createProduct, getMarketplaceProducts } from "./product.service.js";
+import { createProduct, getMarketplaceProducts, getProductDetails } from "./product.service.js";
 
 export const createProductController = asyncHandler(
   async (req, res) => {
@@ -43,6 +43,24 @@ export const getMarketplaceProductsController = asyncHandler(
         200,
         "Products fetched successfully.",
         result,
+      ),
+    );
+  },
+);
+
+
+export const getProductDetailsController = asyncHandler(
+  async (req, res) => {
+    const product = await getProductDetails({
+      productId: req.params.productId,
+      collegeId: req.user.college,
+    });
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        "Product details fetched successfully.",
+        product,
       ),
     );
   },

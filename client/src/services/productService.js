@@ -1,4 +1,3 @@
-
 import api from "./api";
 
 export const getMarketplaceProducts = async ({
@@ -10,5 +9,10 @@ export const getMarketplaceProducts = async ({
     params: { page, limit, sort },
   });
 
+  return response.data;
+};
+
+export const getProductDetails = async (productId) => {
+  const response = await api.get(`/products/${productId}`);
   return response.data;
 };
