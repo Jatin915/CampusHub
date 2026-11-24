@@ -42,10 +42,7 @@ export const createProduct = async ({
   // Validate condition
   // -----------------------------
 
-  if (
-    condition &&
-    !PRODUCT_CONDITION_VALUES.includes(condition)
-  ) {
+  if (condition && !PRODUCT_CONDITION_VALUES.includes(condition)) {
     throw new ApiError(400, "Invalid product condition.");
   }
 
@@ -65,10 +62,7 @@ export const createProduct = async ({
   });
 
   if (!category) {
-    throw new ApiError(
-      404,
-      "Category not found or inactive.",
-    );
+    throw new ApiError(404, "Category not found or inactive.");
   }
 
   // -----------------------------
@@ -89,13 +83,28 @@ export const createProduct = async ({
   return product;
 };
 
+const parsePrice = (value, fieldName) => {
+  if (value === undefined || value === "") return undefined;
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new ApiError(400, `Invalid ${fieldName}.`);
+  }
+
+  return parsed;
+};
 
 export const getMarketplaceProducts = async ({
   collegeId,
   page = 1,
   limit = 12,
   sort = "newest",
-  categoryId
+  categoryId,
+  search,
+  minPrice,
+  maxPrice,
+  condition,
 }) => {
   const currentPage = Math.max(1, Number(page) || 1);
   const pageLimit = Math.min(50, Math.max(1, Number(limit) || 12));
@@ -114,13 +123,57 @@ export const getMarketplaceProducts = async ({
     quantity: { $gt: 0 },
   };
 
+  // Category filter
   if (categoryId) {
-  if (!mongoose.Types.ObjectId.isValid(categoryId)) {
-    throw new ApiError(400, "Invalid category ID.");
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      throw new ApiError(400, "Invalid category ID.");
+    }
+
+    filter.category = categoryId;
   }
 
-  filter.category = categoryId;
-}
+  // Search by product name
+  if (search?.trim()) {
+    const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    filter.name = {
+      $regex: escapedSearch,
+      $options: "i",
+    };
+  }
+
+  // Price filters
+  const minimumPrice = parsePrice(minPrice, "minimum price");
+  const maximumPrice = parsePrice(maxPrice, "maximum price");
+
+  if (
+    minimumPrice !== undefined &&
+    maximumPrice !== undefined &&
+    minimumPrice > maximumPrice
+  ) {
+    throw new ApiError(400, "Minimum price cannot exceed maximum price.");
+  }
+
+  if (minimumPrice !== undefined || maximumPrice !== undefined) {
+    filter.price = {};
+
+    if (minimumPrice !== undefined) {
+      filter.price.$gte = minimumPrice;
+    }
+
+    if (maximumPrice !== undefined) {
+      filter.price.$lte = maximumPrice;
+    }
+  }
+
+  // Condition filter
+  if (condition) {
+    if (!PRODUCT_CONDITION_VALUES.includes(condition)) {
+      throw new ApiError(400, "Invalid product condition.");
+    }
+
+    filter.condition = condition;
+  }
 
   const [products, totalProducts] = await Promise.all([
     Product.find(filter)
@@ -145,10 +198,7 @@ export const getMarketplaceProducts = async ({
   };
 };
 
-export const getProductDetails = async ({
-  productId,
-  collegeId,
-}) => {
+export const getProductDetails = async ({ productId, collegeId }) => {
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     throw new ApiError(400, "Invalid product ID.");
   }
