@@ -34,6 +34,10 @@ export const getMarketplaceProductsController = asyncHandler(
       limit: req.query.limit,
       sort: req.query.sort,
       categoryId: req.query.categoryId,
+      search: req.query.search,
+      minPrice: req.query.minPrice,
+      maxPrice: req.query.maxPrice,
+      condition: req.query.condition,
     });
 
     return res
