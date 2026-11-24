@@ -5,9 +5,22 @@ export const getMarketplaceProducts = async ({
   limit = 12,
   sort = "newest",
   categoryId,
+  search,
+  minPrice,
+  maxPrice,
+  condition,
 } = {}) => {
   const response = await api.get("/products", {
-    params: { page, limit, sort, categoryId },
+    params: {
+      page,
+      limit,
+      sort,
+      categoryId,
+      search,
+      minPrice,
+      maxPrice,
+      condition,
+    },
   });
 
   return response.data;

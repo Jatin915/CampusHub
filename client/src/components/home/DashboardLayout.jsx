@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
@@ -28,6 +29,7 @@ const navigation = [
 const DashboardLayout = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +37,18 @@ const DashboardLayout = ({ children }) => {
   const isLoggedIn = Boolean(user);
   const displayName = user?.name || user?.fullName || "Student";
   const initials = displayName.charAt(0).toUpperCase();
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+
+    const query = searchQuery.trim();
+
+    if (!query) return;
+
+    navigate(
+      `/dashboard/categories?search=${encodeURIComponent(query)}`,
+    );
+  };
 
   const handleLogout = async () => {
     try {
@@ -61,21 +75,32 @@ const DashboardLayout = ({ children }) => {
           </span>
         </Link>
 
-        {/* Search */}
-        <div className="mx-4 hidden max-w-xl flex-1 md:block lg:mx-6">
+        {/* Global Search */}
+        <form
+          onSubmit={handleSearch}
+          className="mx-4 hidden max-w-xl flex-1 md:block lg:mx-6"
+        >
           <div className="flex h-10 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 focus-within:border-slate-400">
             <Search className="h-4 w-4 shrink-0 text-slate-500" />
+
             <input
               type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search for books, laptops, furniture..."
               aria-label="Search products"
               className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
             />
-            <span className="hidden rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-500 lg:inline">
-              ⌘ K
-            </span>
+
+            <button
+              type="submit"
+              aria-label="Submit product search"
+              className="hidden rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-slate-700 lg:block"
+            >
+              Search
+            </button>
           </div>
-        </div>
+        </form>
 
         {/* Navbar actions */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -132,7 +157,6 @@ const DashboardLayout = ({ children }) => {
               )}
             </div>
           ) : (
-            /* Logged-out profile */
             <Link
               to="/login"
               aria-label="Login"
@@ -143,7 +167,7 @@ const DashboardLayout = ({ children }) => {
             </Link>
           )}
 
-          {/* Mobile sidebar toggle: logged-in users only */}
+          {/* Mobile sidebar toggle */}
           {isLoggedIn && (
             <button
               type="button"
@@ -162,7 +186,7 @@ const DashboardLayout = ({ children }) => {
         </div>
       </header>
 
-      {/* Mobile overlay: logged-in users only */}
+      {/* Mobile overlay */}
       {isLoggedIn && mobileMenuOpen && (
         <button
           type="button"
@@ -172,7 +196,7 @@ const DashboardLayout = ({ children }) => {
         />
       )}
 
-      {/* Sidebar: logged-in users only */}
+      {/* Sidebar */}
       {isLoggedIn && (
         <aside
           className={`fixed bottom-0 left-0 top-16 z-40 w-60 border-r border-slate-200 bg-white px-4 py-5 transition-transform duration-200 lg:translate-x-0 ${
