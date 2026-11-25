@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import {
   Check,
   MapPin,
@@ -33,6 +34,9 @@ const CartItem = ({
         </button>
 
         {/* Product image */}
+        <Link 
+          to={`/dashboard/products/${product.id}`}
+        >
         {product.image ? (
           <img
             src={product.image}
@@ -44,9 +48,13 @@ const CartItem = ({
             No image
           </div>
         )}
+        </Link>
 
         {/* Product details */}
         <div className="min-w-0">
+          <Link 
+            to={`/dashboard/products/${product.id}`}
+          >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold leading-5 sm:text-base">
@@ -75,6 +83,7 @@ const CartItem = ({
 
             <p>{product.listed}</p>
           </div>
+          </Link>
 
           {/* Quantity and remove controls */}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 sm:mt-4">
