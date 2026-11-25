@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -14,28 +13,33 @@ import MyOrders from "./pages/dashboard/MyOrders";
 import OrderDetails from "./pages/dashboard/OrderDetails";
 import ProductDetails from "./pages/dashboard/ProductDetails";
 import Categories from "./pages/dashboard/Categories";
+import { WishlistProvider } from "./context/WishlistContext";
+import Wishlist from "./pages/dashboard/Wishlist";
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route element={<PublicRoute />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-        </Route>
+      <WishlistProvider>
+        <Routes>
+          {/* Public Routes */}
+          <Route element={<PublicRoute />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+          </Route>
 
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard/home" element={<Home />} />
-          <Route path="/dashboard/cart" element={<Cart />} />
-          <Route path="/dashboard/orders" element={<MyOrders />} />
-          <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
-          <Route path="/dashboard/products/:productId" element={<ProductDetails />} />
-          <Route path="/dashboard/categories" element={<Categories />} />
-        </Route>
-      </Routes>
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard/home" element={<Home />} />
+            <Route path="/dashboard/cart" element={<Cart />} />
+            <Route path="/dashboard/orders" element={<MyOrders />} />
+            <Route path="/dashboard/orders/:orderId" element={<OrderDetails />} />
+            <Route path="/dashboard/products/:productId" element={<ProductDetails />} />
+            <Route path="/dashboard/categories" element={<Categories />} />
+            <Route path="/dashboard/wishlist" element={<Wishlist />} />
+          </Route>
+        </Routes>
+      </WishlistProvider>
     </BrowserRouter>
   );
 }
