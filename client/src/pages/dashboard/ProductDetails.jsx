@@ -7,12 +7,14 @@ import {
   User,
   Tag,
   ShieldCheck,
+  Heart
 } from "lucide-react";
 
 import DashboardLayout from "../../components/home/DashboardLayout";
 import { getProductDetails } from "../../services/productServices";
 import { addToCart } from "../../services/cartServices";
 import { Minus, Plus, CheckCircle2 } from "lucide-react";
+import { useWishlist } from "../../context/WishlistContext";
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("en-IN", {
@@ -40,6 +42,26 @@ const ProductDetails = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState("");
   const [cartError, setCartError] = useState("");
+
+  const { isWishlisted, toggleWishlist, updatingIds } = useWishlist();
+
+  const [wishlistError, setWishlistError] = useState("");
+
+  const wishlisted = product ? isWishlisted(product._id) : false;
+  const updatingWishlist = product
+    ? updatingIds.has(String(product._id))
+    : false;
+
+  const handleWishlistToggle = async () => {
+    try {
+      setWishlistError("");
+      await toggleWishlist(product._id);
+    } catch (error) {
+      setWishlistError(
+        error.response?.data?.message || "Unable to update wishlist.",
+      );
+    }
+  };
 
   const handleAddToCart = async () => {
     try {
@@ -315,6 +337,30 @@ const ProductDetails = () => {
                   {product.quantity} units available
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={handleWishlistToggle}
+                disabled={updatingWishlist}
+                aria-pressed={wishlisted}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Heart
+                  size={19}
+                  className={
+                    wishlisted ? "fill-red-500 text-red-500" : "text-slate-600"
+                  }
+                />
+                {updatingWishlist
+                  ? "Updating..."
+                  : wishlisted
+                    ? "Remove from Wishlist"
+                    : "Add to Wishlist"}
+              </button>
+
+              {wishlistError && (
+                <p className="text-sm text-red-600">{wishlistError}</p>
+              )}
 
               {/* Add to Cart */}
               <button
