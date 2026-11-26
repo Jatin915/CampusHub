@@ -10,6 +10,7 @@ import {
   createCheckoutSession,
   resumeCheckoutSession,
   verifyCheckoutPayment,
+  cancelCheckoutSession,
 } from "./payment.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiError from "../../utils/ApiError.js";
@@ -211,4 +212,20 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
 
     throw error;
   }
+});
+
+
+export const cancelCheckout = asyncHandler(async (req, res) => {
+  const result = await cancelCheckoutSession(
+    req.user._id,
+    req.params.paymentId,
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      result.message,
+      result,
+    ),
+  );
 });

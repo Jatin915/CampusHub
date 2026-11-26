@@ -22,3 +22,8 @@ export const resumeCheckout = async (orderId) => {
 
   return response.data;
 };
+
+export const cancelCheckout = async (paymentId) => {
+  const response = await api.post(`/payments/cancel/${paymentId}`);
+  return response.data;
+};
