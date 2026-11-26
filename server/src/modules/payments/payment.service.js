@@ -51,6 +51,7 @@ const buildCheckoutResponse = (payment) => ({
   keyId: env.razorpayKeyId,
 });
 
+
 const releaseReservedStock = async (
   paymentId,
   terminalStatus = CHECKOUT_PAYMENT_STATUS.FAILED,
@@ -59,6 +60,7 @@ const releaseReservedStock = async (
 
   try {
     await session.withTransaction(async () => {
+      // Claim this release exactly once.
       const payment = await Payment.findOneAndUpdate(
         {
           _id: paymentId,
@@ -81,15 +83,45 @@ const releaseReservedStock = async (
         status: ORDER_STATUS.PENDING_PAYMENT,
       }).session(session);
 
+      // Restore reserved stock and return products to the buyer's cart.
+      let cart = await Cart.findOne({
+        user: payment.buyer,
+      }).session(session);
+
+      if (!cart) {
+        cart = new Cart({
+          user: payment.buyer,
+          items: [],
+        });
+      }
+
       for (const order of orders) {
         for (const item of order.items) {
+          // Restore inventory.
           await Product.updateOne(
             { _id: item.product },
             { $inc: { quantity: item.quantity } },
             { session },
           );
+
+          // Restore the cart quantity without creating duplicate entries.
+          const existingItem = cart.items.find(
+            (cartItem) =>
+              cartItem.product.toString() === item.product.toString(),
+          );
+
+          if (existingItem) {
+            existingItem.quantity += item.quantity;
+          } else {
+            cart.items.push({
+              product: item.product,
+              quantity: item.quantity,
+            });
+          }
         }
       }
+
+      await cart.save({ session });
 
       await Order.updateMany(
         {
@@ -292,6 +324,13 @@ export const createCheckoutSession = async (
 
       payment.orders = createdOrders.map((order) => order._id);
       await payment.save({ session });
+      // Remove reserved products from the active cart.
+      // The order now owns these reserved quantities.
+      cart.items = cart.items.filter(
+        (item) => !selectedSet.has(item.product.toString()),
+      );
+
+      await cart.save({ session });
     });
   } finally {
     await session.endSession();
@@ -586,22 +625,6 @@ export const verifyCheckoutPayment = async (userId, payload) => {
         },
         { session },
       );
-
-      const purchasedProductIds = new Set(
-        orders.flatMap((order) =>
-          order.items.map((item) => item.product.toString()),
-        ),
-      );
-
-      const cart = await Cart.findOne({ user: userId }).session(session);
-
-      if (cart) {
-        cart.items = cart.items.filter(
-          (item) => !purchasedProductIds.has(item.product.toString()),
-        );
-
-        await cart.save({ session });
-      }
     });
   } finally {
     await session.endSession();
