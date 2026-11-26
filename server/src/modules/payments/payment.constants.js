@@ -6,4 +6,4 @@ export const PAYMENT_STATUS = {
   REFUNDED: "REFUNDED",
 };
 
-export const PAYMENT_EXPIRY_MINUTES = 15;
+export const PAYMENT_EXPIRY_MINUTES = 10;

@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 const categoryIcons = [BookOpen, Laptop, Armchair, Shirt, Dumbbell];
 
 const CategorySection = ({ categories = [], isLoading = false }) => {
+  const navigate = useNavigate();
+  
   if (isLoading) {
     return (
       <section>
@@ -29,8 +31,6 @@ const CategorySection = ({ categories = [], isLoading = false }) => {
   }
 
   if (!categories.length) return null;
-
-  const navigate = useNavigate();
 
   return (
     <section>

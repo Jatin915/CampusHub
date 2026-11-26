@@ -11,7 +11,6 @@ export const processExpiredPayments = async () => {
   running = true;
 
   try {
-    
     const expiredPayments = await Payment.find({
       status: PAYMENT_STATUS.CREATED,
       expiresAt: { $lte: new Date() },
@@ -20,6 +19,15 @@ export const processExpiredPayments = async () => {
 
     for (const payment of expiredPayments) {
       try {
+        if (
+          typeof payment.razorpayOrderId !== "string" ||
+          !payment.razorpayOrderId.startsWith("order_")
+        ) {
+          console.error(
+            `[PaymentExpiry] Invalid Razorpay order ID for payment ${payment._id}`,
+          );
+          continue;
+        }
 
         const providerOrder = await razorpay.orders.fetch(
           payment.razorpayOrderId,
@@ -52,9 +60,14 @@ export const processExpiredPayments = async () => {
         if (hasCapturedPayment || hasPendingPayment) continue;
 
         await expireCheckout(payment._id);
-        
       } catch (error) {
-        console.error(`[PaymentExpiry] Failed for ${payment._id}:`, error);
+        console.error(`[PaymentExpiry] Failed for ${payment._id}:`, {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error,
+          stack: error.stack,
+          razorpayOrderId: payment.razorpayOrderId,
+        });
       }
     }
   } catch (error) {

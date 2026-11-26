@@ -265,6 +265,13 @@ export const createCheckoutSession = async (
         { session },
       );
 
+      console.log("[CHECKOUT CREATED]", {
+        paymentId: payment._id.toString(),
+        expiresAt: payment.expiresAt,
+        currentTime: new Date(),
+        expiryMinutes: PAYMENT_EXPIRY_MINUTES,
+      });
+
       const orderDocuments = [...sellerGroups.values()].map((group) => ({
         buyer: buyer._id,
         seller: group.seller,
@@ -313,15 +320,12 @@ export const createCheckoutSession = async (
   return buildCheckoutResponse(payment);
 };
 
-
 const verifyRazorpayOrderForResume = async (payment) => {
   let razorpayOrder;
   let paymentAttempts;
 
   try {
-    razorpayOrder = await razorpay.orders.fetch(
-      payment.razorpayOrderId,
-    );
+    razorpayOrder = await razorpay.orders.fetch(payment.razorpayOrderId);
 
     paymentAttempts = await razorpay.orders.fetchPayments(
       payment.razorpayOrderId,
@@ -356,13 +360,8 @@ const verifyRazorpayOrderForResume = async (payment) => {
   }
 
   // Only created or attempted orders can potentially be resumed.
-  if (
-    !["created", "attempted"].includes(razorpayOrder.status)
-  ) {
-    throw new ApiError(
-      409,
-      "This Razorpay order cannot be resumed.",
-    );
+  if (!["created", "attempted"].includes(razorpayOrder.status)) {
+    throw new ApiError(409, "This Razorpay order cannot be resumed.");
   }
 
   const attempts = paymentAttempts.items || [];
@@ -374,10 +373,7 @@ const verifyRazorpayOrderForResume = async (payment) => {
       attempt.amount !== payment.amount ||
       attempt.currency !== payment.currency
     ) {
-      throw new ApiError(
-        409,
-        "Payment attempt details could not be verified.",
-      );
+      throw new ApiError(409, "Payment attempt details could not be verified.");
     }
 
     if (["captured", "refunded"].includes(attempt.status)) {
@@ -626,4 +622,189 @@ export const expireCheckout = async (paymentId) => {
   }
 
   await releaseReservedStock(payment._id, CHECKOUT_PAYMENT_STATUS.EXPIRED);
+};
+
+export const cancelCheckoutSession = async (userId, paymentId) => {
+  // 1. Validate payment ID
+  if (!mongoose.isValidObjectId(paymentId)) {
+    throw new ApiError(400, "Invalid payment ID.");
+  }
+
+  // 2. Find checkout belonging to the logged-in buyer
+  const payment = await Payment.findOne({
+    _id: paymentId,
+    buyer: userId,
+  });
+
+  if (!payment) {
+    throw new ApiError(404, "Checkout payment not found.");
+  }
+
+  // 3. Handle already processed payments
+  if (payment.status === CHECKOUT_PAYMENT_STATUS.PAID) {
+    return {
+      paymentId: payment._id,
+      status: CHECKOUT_PAYMENT_STATUS.PAID,
+      message: "Payment is already completed.",
+    };
+  }
+
+  if (payment.status !== CHECKOUT_PAYMENT_STATUS.CREATED) {
+    return {
+      paymentId: payment._id,
+      status: payment.status,
+      message: "This checkout is already closed.",
+    };
+  }
+
+  // 4. If Razorpay order was never created, release reservation
+  if (!payment.razorpayOrderId) {
+    await releaseReservedStock(payment._id, CHECKOUT_PAYMENT_STATUS.FAILED);
+
+    const updatedPayment = await Payment.findById(payment._id);
+
+    return {
+      paymentId: payment._id,
+      status: updatedPayment?.status,
+      message: "Checkout cancellation processed.",
+    };
+  }
+
+  let razorpayOrder;
+  let providerPayments;
+
+  // 5. Fetch latest payment status from Razorpay
+  try {
+    razorpayOrder = await razorpay.orders.fetch(payment.razorpayOrderId);
+
+    providerPayments = await razorpay.orders.fetchPayments(
+      payment.razorpayOrderId,
+    );
+  } catch (error) {
+    console.error("Razorpay cancellation verification failed:", error);
+
+    throw new ApiError(
+      502,
+      "Unable to verify payment status. Stock reservation has been retained.",
+    );
+  }
+
+  // 6. Verify Razorpay order details
+  if (
+    razorpayOrder.id !== payment.razorpayOrderId ||
+    razorpayOrder.amount !== payment.amount ||
+    razorpayOrder.currency !== payment.currency
+  ) {
+    throw new ApiError(
+      409,
+      "Razorpay order details do not match this checkout.",
+    );
+  }
+
+  const attempts = providerPayments?.items || [];
+
+  console.log("CANCELLATION DEBUG:", {
+    localPaymentStatus: payment.status,
+    razorpayOrderStatus: razorpayOrder.status,
+    attempts: attempts.map((attempt) => ({
+      id: attempt.id,
+      status: attempt.status,
+      amount: attempt.amount,
+      currency: attempt.currency,
+    })),
+  });
+
+  // 7. Captured payment must be verified, never cancelled
+  const capturedAttempt = attempts.find(
+    (attempt) => attempt.status === "captured",
+  );
+
+  if (capturedAttempt) {
+    const signature = crypto
+      .createHmac("sha256", env.razorpayKeySecret)
+      .update(`${payment.razorpayOrderId}|${capturedAttempt.id}`)
+      .digest("hex");
+
+    const result = await verifyCheckoutPayment(userId, {
+      paymentId: payment._id.toString(),
+      razorpay_order_id: payment.razorpayOrderId,
+      razorpay_payment_id: capturedAttempt.id,
+      razorpay_signature: signature,
+    });
+
+    return {
+      ...result,
+      message: "Payment was captured and verified successfully.",
+    };
+  }
+
+  // Razorpay says paid but captured details are unavailable.
+  // Retain stock until payment can be verified.
+  if (razorpayOrder.status === "paid") {
+    throw new ApiError(
+      409,
+      "Razorpay reports a paid order, but captured payment details are unavailable. Reservation retained.",
+    );
+  }
+
+  // 8. Only created/attempted orders can be considered for cancellation
+  if (!["created", "attempted"].includes(razorpayOrder.status)) {
+    throw new ApiError(
+      409,
+      "Razorpay order is not in a cancellable state. Reservation retained.",
+    );
+  }
+
+  // 9. Do not release stock for pending or authorized attempts
+  const hasPendingAttempt = attempts.some((attempt) =>
+    ["created", "authorized"].includes(attempt.status),
+  );
+
+  if (hasPendingAttempt) {
+    return {
+      paymentId: payment._id,
+      status: CHECKOUT_PAYMENT_STATUS.CREATED,
+      message:
+        "Payment is still processing. Stock reservation has been retained.",
+    };
+  }
+
+  // 10. Decide whether the reservation can safely be released
+  const noAttemptsAndOrderCreated =
+    attempts.length === 0 && razorpayOrder.status === "created";
+
+  const allAttemptsFailed =
+    attempts.length > 0 &&
+    attempts.every((attempt) => attempt.status === "failed");
+
+  if (!noAttemptsAndOrderCreated && !allAttemptsFailed) {
+    throw new ApiError(
+      409,
+      "Payment status is uncertain. Reservation retained.",
+    );
+  }
+
+  // 11. Atomically mark payment FAILED and restore stock.
+  // releaseReservedStock only processes payments still in CREATED state.
+  await releaseReservedStock(payment._id, CHECKOUT_PAYMENT_STATUS.FAILED);
+
+  // 12. Fetch final state
+  const updatedPayment = await Payment.findById(payment._id);
+
+  if (updatedPayment?.status === CHECKOUT_PAYMENT_STATUS.PAID) {
+    return {
+      paymentId: payment._id,
+      status: CHECKOUT_PAYMENT_STATUS.PAID,
+      message: "Payment was completed before cancellation.",
+    };
+  }
+
+  return {
+    paymentId: payment._id,
+    status: updatedPayment?.status,
+    message:
+      updatedPayment?.status === CHECKOUT_PAYMENT_STATUS.FAILED
+        ? "Checkout cancelled and stock released successfully."
+        : "Checkout cancellation is already being processed.",
+  };
 };

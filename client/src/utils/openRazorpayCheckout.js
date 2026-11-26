@@ -1,4 +1,8 @@
-import { verifyPayment } from "../services/paymentServices";
+
+import {
+  verifyPayment,
+  cancelCheckout,
+} from "../services/paymentServices";
 
 export const openRazorpayCheckout = ({
   checkout,
@@ -22,6 +26,29 @@ export const openRazorpayCheckout = ({
     return;
   }
 
+  let paymentHandlerStarted = false;
+  let cancellationRequested = false;
+
+  // Ask backend to check Razorpay status before releasing stock.
+  const requestCancellation = async () => {
+    if (cancellationRequested || paymentHandlerStarted) return;
+
+    cancellationRequested = true;
+
+    try {
+      const response = await cancelCheckout(checkout.paymentId);
+
+      console.log("Checkout cancellation response:", response);
+    } catch (error) {
+      console.error(
+        "Checkout cancellation request failed:",
+        error.response?.data?.message || error.message,
+      );
+
+      // Backend expiry worker remains the fallback.
+    }
+  };
+
   const options = {
     key: checkout.keyId,
     amount: checkout.amount,
@@ -31,6 +58,7 @@ export const openRazorpayCheckout = ({
     order_id: checkout.razorpayOrderId,
 
     handler: async (razorpayResponse) => {
+      paymentHandlerStarted = true;
       onPaymentStart?.();
 
       try {
@@ -48,6 +76,7 @@ export const openRazorpayCheckout = ({
           error.response?.data?.message || error.message,
         );
 
+        // Do not cancel here. Payment may already be captured.
         onError?.(
           "Payment verification is pending. Please check your orders before retrying.",
         );
@@ -55,7 +84,8 @@ export const openRazorpayCheckout = ({
     },
 
     modal: {
-      ondismiss: () => {
+      ondismiss: async () => {
+        await requestCancellation();
         onClose?.();
       },
     },
@@ -67,13 +97,15 @@ export const openRazorpayCheckout = ({
 
   const razorpay = new window.Razorpay(options);
 
-  razorpay.on("payment.failed", (response) => {
+  razorpay.on("payment.failed", async (response) => {
     onPaymentFailure?.();
 
     console.error(
       "Payment failed:",
       response.error?.description || "Unknown payment error",
     );
+
+    await requestCancellation();
 
     onError?.(
       "Payment attempt failed. Your cart is unchanged. You can try again.",
