@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Package,
@@ -103,35 +103,48 @@ function MyOrders() {
               "Payment verification is pending. Please check your orders.",
             );
             setResumingOrderId(null);
+            await fetchOrders();
             return;
           }
 
-          // Refresh the existing orders list here.
           await fetchOrders();
-
           setResumingOrderId(null);
         },
 
-        onError: (message) => {
+        onError: async (message) => {
+          // Refresh because payment failure may have triggered cancellation.
+          await fetchOrders();
+
           setError(message);
           setResumingOrderId(null);
         },
 
-        onClose: () => {
+        onClose: async () => {
+          // openRazorpayCheckout calls this after its cancellation request.
+          await fetchOrders();
+
+          setError("");
           setResumingOrderId(null);
         },
       });
     } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Unable to resume checkout. Please try again.",
-      );
+      const status = error.response?.status;
+
+      if (status === 409) {
+        // Order was cancelled, expired, or is no longer payable.
+        await fetchOrders();
+
+        // Do not hide the refreshed order list behind an error screen.
+        setError("");
+      } else {
+        setError(error.response?.data?.message || "Unable to resume checkout.");
+      }
 
       setResumingOrderId(null);
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -145,6 +158,7 @@ function MyOrders() {
       const response = await getMyOrders(params);
 
       setOrders(response?.data?.orders || []);
+
       setPagination(
         response?.data?.pagination || {
           currentPage: 1,
@@ -159,11 +173,25 @@ function MyOrders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter]);
 
+  // Fetch orders whenever page or status filter changes.
   useEffect(() => {
     fetchOrders();
-  }, [page, statusFilter]);
+  }, [fetchOrders]);
+
+  // Refresh orders when the user returns to this browser tab.
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchOrders();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [fetchOrders]);
 
   const handleFilterChange = (value) => {
     setStatusFilter(value);
@@ -352,18 +380,18 @@ function MyOrders() {
                         View Details
                       </Link>
                       {order.status === "PENDING_PAYMENT" &&
-                      order.payment?.status === "PENDING" && (
-                        <button
-                          type="button"
-                          disabled={resumingOrderId !== null}
-                          onClick={() => handleResumeCheckout(order._id)}
-                          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                        >
-                          {resumingOrderId === order._id
-                            ? "Opening Payment..."
-                            : "Resume Payment"}
-                        </button>
-                      )}
+                        order.payment?.status === "PENDING" && (
+                          <button
+                            type="button"
+                            disabled={resumingOrderId !== null}
+                            onClick={() => handleResumeCheckout(order._id)}
+                            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                          >
+                            {resumingOrderId === order._id
+                              ? "Opening Payment..."
+                              : "Resume Payment"}
+                          </button>
+                        )}
                     </div>
                   </div>
                 );
