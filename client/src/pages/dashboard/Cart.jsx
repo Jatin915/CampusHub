@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingCart, ArrowRight } from "lucide-react";
 
-
 import DashboardLayout from "../../components/home/DashboardLayout";
 import CartItem from "../../components/cart/CartItem";
 import CartSummary from "../../components/cart/CartSummary";
@@ -14,10 +13,7 @@ import {
   removeCartItem,
 } from "../../services/cartServices";
 
-import { 
-  createCheckout,
-  cancelCheckout
- } from "../../services/paymentServices";
+import { createCheckout, cancelCheckout } from "../../services/paymentServices";
 import { openRazorpayCheckout } from "../../utils/openRazorpayCheckout";
 
 const formatPrice = (amount) =>
@@ -135,6 +131,29 @@ const Cart = () => {
   const paymentVerifiedRef = useRef(false);
   const paymentFailedRef = useRef(false);
 
+  const refreshCart = async () => {
+    const response = await getCart();
+    const cartItems = response.data.items || [];
+
+    const formattedProducts = cartItems
+      .filter((item) => item.product)
+      .map((item) => ({
+        id: item.product._id,
+        name: item.product.name,
+        category: item.product.category?.name || "Uncategorized",
+        condition: item.product.condition || "GOOD",
+        college: item.product.college?.name || "Your College",
+        listed: "Recently listed",
+        price: item.product.price,
+        quantity: item.quantity,
+        stock: item.product.quantity,
+        image: item.product.images?.[0]?.url || "",
+      }));
+
+    setCart(formattedProducts);
+    setSelectedIds(formattedProducts.map((product) => product.id));
+  };
+
   const handleCheckout = async () => {
     if (selectedIds.length === 0) {
       setError("Please select at least one product.");
@@ -173,6 +192,14 @@ const Cart = () => {
         throw new Error("Invalid checkout response from server.");
       }
 
+      // The backend has already removed these products from the active cart.
+      setCart((current) =>
+        current.filter((product) => !productIdsToOrder.includes(product.id)),
+      );
+      setSelectedIds((current) =>
+        current.filter((id) => !productIdsToOrder.includes(id)),
+      );
+
       // Step 2: Open Razorpay using reusable helper.
       openRazorpayCheckout({
         checkout,
@@ -206,15 +233,23 @@ const Cart = () => {
           setCheckoutLoading(false);
         },
 
-        onError: (message) => {
+        onError: async () => {
           paymentFailedRef.current = true;
 
+          try {
+            await refreshCart();
+          } catch (error) {
+            console.error("Failed to refresh cart:", error);
+          }
+
           setError("");
-          alert("Your payment status may still be pending. Please check My Orders before trying again. Your cart is unchanged. You can try again.");
+          alert(
+            "Your payment status may still be pending. Please check My Orders before trying again.",
+          );
           setCheckoutLoading(false);
         },
 
-        onClose: () => {
+        onClose: async () => {
           if (
             paymentHandlerStartedRef.current ||
             paymentVerifiedRef.current ||
@@ -223,8 +258,13 @@ const Cart = () => {
             return;
           }
 
+          try {
+            await refreshCart();
+          } catch (error) {
+            console.error("Failed to refresh cart:", error);
+          }
+
           setError("");
-          
           setCheckoutLoading(false);
         },
 
