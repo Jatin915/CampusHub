@@ -42,7 +42,6 @@ const ProductDetails = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState("");
   const [cartError, setCartError] = useState("");
-
   const { isWishlisted, toggleWishlist, updatingIds } = useWishlist();
 
   const [wishlistError, setWishlistError] = useState("");
@@ -62,7 +61,7 @@ const ProductDetails = () => {
       );
     }
   };
-
+  
   const handleAddToCart = async () => {
     try {
       setAddingToCart(true);

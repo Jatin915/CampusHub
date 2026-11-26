@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";

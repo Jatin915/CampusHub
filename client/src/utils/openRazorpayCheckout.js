@@ -1,4 +1,3 @@
-
 import {
   verifyPayment,
   cancelCheckout,
